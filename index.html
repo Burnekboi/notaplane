@@ -59,6 +59,23 @@
                 color: rgba(255,216,102,0.5); font: 12px Arial;
                 margin-top: 12px; letter-spacing: 1px;
             }
+            #rotatePrompt {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: #000; z-index: 99999; display: none;
+                flex-direction: column; align-items: center; justify-content: center;
+            }
+            #rotateIcon {
+                font-size: 64px; color: #ffd866; animation: rotateHint 2s ease-in-out infinite;
+                margin-bottom: 24px;
+            }
+            @keyframes rotateHint {
+                0%, 100% { transform: rotate(0deg); }
+                50% { transform: rotate(90deg); }
+            }
+            #rotateText {
+                color: rgba(255,216,102,0.7); font: bold 16px Arial;
+                text-align: center; letter-spacing: 1px; line-height: 1.6;
+            }
 
             canvas {
                 background: #0a3a4a;
@@ -462,6 +479,10 @@
             </div>
             <div id="loadingText">Loading assets...</div>
         </div>
+        <div id="rotatePrompt">
+            <div id="rotateIcon">↻</div>
+            <div id="rotateText">Please rotate your device<br/>to landscape mode</div>
+        </div>
         <div id="gameWrap">
             <canvas id="game"></canvas>
             <a id="backBtn" href="dashboard.html">&#8592; BACK</a>
@@ -523,6 +544,36 @@
             hitCanvas.width = 600;
             hitCanvas.height = 600;
             const hitCtx = hitCanvas.getContext('2d');
+
+            // ── Mobile Detection & Performance ─────────────────────────────────
+            const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || ('ontouchstart' in window);
+
+            // Cap shadowBlur on mobile (major performance killer)
+            if (isMobile) {
+                const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
+                if (desc && desc.set) {
+                    Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', {
+                        set(v) { desc.set.call(this, Math.min(v, 2)); },
+                        get() { return desc.get ? desc.get.call(this) : 0; },
+                    });
+                }
+            }
+
+            // ── Orientation Detection ───────────────────────────────────────────
+            const rotatePrompt = document.getElementById('rotatePrompt');
+
+            function checkOrientation() {
+                if (window.innerHeight > window.innerWidth) {
+                    rotatePrompt.style.display = 'flex';
+                } else {
+                    rotatePrompt.style.display = 'none';
+                    if (typeof resizeCanvas === 'function') resizeCanvas();
+                }
+            }
+
+            window.addEventListener('resize', () => { checkOrientation(); resizeCanvas(); });
+            window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 300));
+            checkOrientation();
 
             let audioCtx = null;
             let bulletFireAudio = null;

@@ -7,7 +7,7 @@ const { connectDb } = require('./db');
 const { initBot } = require('./bot');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(express.json());
@@ -31,12 +31,12 @@ app.get('/', (req, res) => {
 });
 
 // Start HTTP server immediately (game files load right away)
-const server = app.listen(PORT, () => {
-  const url = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : `http://localhost:${PORT}`;
-  console.log(`Server running on ${url}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server listening on port ${PORT}`);
 });
+
+// Immediate health check so Railway knows the app is alive
+app.get('/health', (req, res) => res.send('ok'));
 
 // Connect to MongoDB in background
 connectDb().catch(err => {

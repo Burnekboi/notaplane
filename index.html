@@ -3,6 +3,7 @@
 <html>
     <head>
         <title>Space King Jackpot</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
         <style>
@@ -25,11 +26,15 @@
 
                 align-items: center;
 
-                height: 100vh;
+                height: 100dvh;
+
+                width: 100dvw;
 
                 overflow: hidden;
 
-                gap: 10px;
+                margin: 0;
+
+                gap: 0;
             }
 
             #loadingScreen {
@@ -61,6 +66,8 @@
                 box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 
                 cursor: crosshair;
+
+                touch-action: none;
             }
 
             #ui {
@@ -2235,6 +2242,49 @@
 
                 clearInterval(burstInterval);
             });
+
+            // ── Touch / Mobile Support ─────────────────────────────────────────────
+            canvas.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent("mousedown", {
+                    clientX: touch.clientX, clientY: touch.clientY,
+                });
+                canvas.dispatchEvent(mouseEvent);
+            }, { passive: false });
+
+            canvas.addEventListener("touchmove", (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent("mousemove", {
+                    clientX: touch.clientX, clientY: touch.clientY,
+                });
+                canvas.dispatchEvent(mouseEvent);
+            }, { passive: false });
+
+            canvas.addEventListener("touchend", (e) => {
+                e.preventDefault();
+                canvas.dispatchEvent(new MouseEvent("mouseup"));
+            }, { passive: false });
+
+            // ── Responsive Canvas Scaling ──────────────────────────────────────────
+            function resizeCanvas() {
+                const maxW = window.innerWidth;
+                const maxH = window.innerHeight;
+                const scale = Math.min(maxW / 800, maxH / 500, 1);
+                const wrap = document.getElementById('gameWrap');
+                wrap.style.transform = `scale(${scale})`;
+                wrap.style.transformOrigin = 'center center';
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
+            resizeCanvas();
+
+            // Hide BACK button in Telegram WebApp
+            if (window.Telegram?.WebApp) {
+                document.getElementById('backBtn').style.display = 'none';
+            }
 
             function fireBullet() {
                 if (playerAttackLocked) return; // Lock attacks during D3 death sequence

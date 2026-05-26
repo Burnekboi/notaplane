@@ -32,6 +32,29 @@
                 gap: 10px;
             }
 
+            #loadingScreen {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: #000; display: flex; flex-direction: column;
+                align-items: center; justify-content: center; z-index: 9999;
+            }
+            #loadingTitle {
+                width: min(300px, 35vw); margin-bottom: 30px;
+                image-rendering: auto;
+            }
+            #loadingBarWrap {
+                width: 260px; height: 6px; background: #1a1a1a;
+                border-radius: 3px; overflow: hidden;
+            }
+            #loadingBar {
+                height: 100%; width: 0%;
+                background: linear-gradient(90deg, #ffd866, #ffaa00);
+                border-radius: 3px; transition: width 0.2s;
+            }
+            #loadingText {
+                color: rgba(255,216,102,0.5); font: 12px Arial;
+                margin-top: 12px; letter-spacing: 1px;
+            }
+
             canvas {
                 background: #0a3a4a;
 
@@ -425,6 +448,13 @@
     </head>
 
     <body>
+        <div id="loadingScreen">
+            <img id="loadingTitle" src="assets/intro title.png" alt="Loading" />
+            <div id="loadingBarWrap">
+                <div id="loadingBar"></div>
+            </div>
+            <div id="loadingText">Loading assets...</div>
+        </div>
         <div id="gameWrap">
             <canvas id="game"></canvas>
             <a id="backBtn" href="dashboard.html">&#8592; BACK</a>
@@ -9778,7 +9808,55 @@
                 requestAnimationFrame(loop);
             }
 
-            requestAnimationFrame(loop);
+            // ── Asset Preloader ───────────────────────────────────────────────────
+            const ASSETS = [
+                "assets/T1A.png","assets/T1B.png","assets/T2.png","assets/T3.png",
+                "assets/T4.png","assets/T5.png","assets/T6.png","assets/T6 title.png",
+                "assets/T6B.png","assets/T6B title.png","assets/T6C.png","assets/T6C title.png",
+                "assets/D1.png","assets/D1 title.png","assets/D2.png","assets/D2 title.png",
+                "assets/D3.png","assets/D3 title.png","assets/D4.png","assets/D4 title.png",
+                "assets/base cannon.png","assets/base missile.png","assets/base thunder.png",
+                "assets/bullet.png","assets/cannon.png","assets/cosmos.png",
+                "assets/dragonstrike icon.png","assets/electric ball.png","assets/explosionC.png",
+                "assets/intro title.png","assets/missile icon.png","assets/missile launcher2.png",
+                "assets/missile.png","assets/missileB.png","assets/nT1AT1B title.png",
+                "assets/smoke.png","assets/textbox.png",
+                "assets/lightning ball.json",
+                "sfx/bullet fire.mp3","sfx/dragon fire.mp3","sfx/missile fire.mp3",
+            ];
+
+            const loadingBar = document.getElementById('loadingBar');
+            const loadingText = document.getElementById('loadingText');
+            const loadingScreen = document.getElementById('loadingScreen');
+            let loadedCount = 0;
+            const totalAssets = ASSETS.length;
+
+            function onAssetLoaded() {
+                loadedCount++;
+                const pct = Math.round(loadedCount / totalAssets * 100);
+                loadingBar.style.width = pct + '%';
+                loadingText.textContent = 'Loading... ' + pct + '%';
+                if (loadedCount >= totalAssets) {
+                    loadingScreen.style.display = 'none';
+                    requestAnimationFrame(loop);
+                }
+            }
+
+            ASSETS.forEach(path => {
+                if (path.endsWith('.mp3')) {
+                    const a = new Audio(path);
+                    a.addEventListener('canplaythrough', onAssetLoaded);
+                    a.addEventListener('error', onAssetLoaded);
+                    a.load();
+                } else if (path.endsWith('.json')) {
+                    fetch(path).then(onAssetLoaded).catch(onAssetLoaded);
+                } else {
+                    const img = new Image();
+                    img.onload = onAssetLoaded;
+                    img.onerror = onAssetLoaded;
+                    img.src = path;
+                }
+            });
         </script>
 
         <script>

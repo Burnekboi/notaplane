@@ -29,6 +29,9 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'dashboard.html'));
+});
 
 // Start HTTP server immediately (game files load right away)
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -37,6 +40,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 
 // Immediate health check so Railway knows the app is alive
 app.get('/health', (req, res) => res.send('ok'));
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Connect to MongoDB in background
 connectDb().catch(err => {

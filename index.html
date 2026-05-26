@@ -10017,7 +10017,10 @@
 
         <script>
             // ── Auth ─────────────────────────────────────────────────────────
-            const API_BASE = window.location.origin;
+            const RAILWAY_HOST = 'notaplane.up.railway.app';
+            const API_BASE = window.location.origin.includes(RAILWAY_HOST)
+              ? window.location.origin
+              : 'https://' + RAILWAY_HOST;
             let authToken = localStorage.getItem('token');
 
             // Check for auth token in URL query parameter (for external browser launch)

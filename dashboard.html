@@ -593,7 +593,10 @@
 
         </script>
         <script>
-            const API_BASE = window.location.origin;
+            const RAILWAY_HOST = 'notaplane.up.railway.app';
+            const API_BASE = window.location.origin.includes(RAILWAY_HOST)
+              ? window.location.origin
+              : 'https://' + RAILWAY_HOST;
 
             // Check for auth token in URL query parameter (for external browser)
             const urlParams = new URLSearchParams(window.location.search);

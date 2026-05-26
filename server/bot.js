@@ -2,10 +2,10 @@ const { Telegraf } = require('telegraf');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
-const PUBLIC_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL;
-const WEBAPP_URL = process.env.WEBAPP_URL || (PUBLIC_DOMAIN
-  ? `https://${PUBLIC_DOMAIN}`
-  : 'http://localhost:3000');
+const PUBLIC_DOMAIN = process.env.WEBAPP_URL || process.env.VERCEL_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL;
+const WEBAPP_URL = PUBLIC_DOMAIN
+  ? `https://${PUBLIC_DOMAIN.replace(/^https?:\/\//, '')}`
+  : 'http://localhost:3000';
 
 console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 

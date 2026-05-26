@@ -4201,15 +4201,15 @@
                 // T1A+T1B heavy, good T2 presence
 
                 const tier =
-                    roll < 0.22
+                    roll < 0.11
                         ? 0
-                        : roll < 0.44
+                        : roll < 0.22
                           ? 1
-                          : roll < 0.63
+                          : roll < 0.41
                             ? 2
-                            : roll < 0.865
+                            : roll < 0.645
                               ? 3
-                              : roll < 0.985
+                              : roll < 0.765
                                 ? 4
                                 : 5;
 
@@ -4217,7 +4217,7 @@
 
                 // T1A rows are straight/diagonal, T1B rows are wave
 
-                if ((tier === 0 || tier === 1) && Math.random() < 0.28) {
+                if ((tier === 0 || tier === 1) && Math.random() < 0.14) {
                     spawnRow(side, t, tier);
                     return;
                 }
@@ -4530,7 +4530,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 0));
-            }, 1200);
+            }, 2400);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4562,7 +4562,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 1));
-            }, 1400);
+            }, 2800);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4681,7 +4681,7 @@
                 const ti = Math.random() < 0.5 ? 0 : 1;
 
                 spawnRow(side, ENEMY_TIERS[ti], ti);
-            }, 4000);
+            }, 8000);
 
             // Rare elite spawn — one T1A Elite (9) or T1B Elite (10) every 5s
 
@@ -4719,9 +4719,9 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, wave, ti));
-            }, 5000);
+            }, 10000);
 
-            // 3x T1A row every 10 seconds (slow wave movement)
+            // 3x T1A row every 20 seconds (slow wave movement)
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4754,7 +4754,7 @@
                     for (let i = 0; i < count; i++)
                         enemies.push(makeEnemy(baseX, -t.size - i * ROW_GAP, vx, vy, t, wave, ti));
                 }
-            }, 10000);
+            }, 20000);
 
             // Elite T2 spawn — once every 10 seconds
 

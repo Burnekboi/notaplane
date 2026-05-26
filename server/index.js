@@ -27,7 +27,10 @@ app.get('/api/health', (req, res) => {
 
 // Start HTTP server immediately (game files load right away)
 const server = app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  const url = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : `http://localhost:${PORT}`;
+  console.log(`Server running on ${url}`);
 });
 
 // Connect to MongoDB in background
@@ -45,6 +48,7 @@ if (hasBotToken) {
     console.log('Telegram bot started');
   }).catch(err => {
     console.log('Bot launch failed:', err.message);
+    console.log('Check that BOT_TOKEN is correct in Railway dashboard.');
   });
 
   process.once('SIGINT', () => { bot.stop('SIGINT'); server.close(); });

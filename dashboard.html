@@ -595,10 +595,38 @@
         <script>
             const API_BASE = window.location.origin;
 
+            // Check for auth token in URL query parameter (for external browser)
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('token');
+            if (urlToken) {
+                localStorage.setItem('token', urlToken);
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+
             async function initAuth() {
+                const storedToken = localStorage.getItem('token');
+
+                // Try stored/URL token first
+                if (storedToken) {
+                    try {
+                        const res = await fetch(API_BASE + '/api/auth/me', {
+                            headers: { 'Authorization': 'Bearer ' + storedToken }
+                        });
+                        if (res.ok) {
+                            const user = await res.json();
+                            updateDashboard(user);
+                            return;
+                        }
+                    } catch {}
+                }
+
+                // Fall back to Telegram WebApp auth
                 try {
                     const tg = window.Telegram?.WebApp;
-                    if (!tg) return console.warn('Not in Telegram WebApp');
+                    if (!tg) {
+                        console.warn('No auth available — guest mode');
+                        return;
+                    }
 
                     tg.expand();
                     tg.ready();
@@ -634,23 +662,7 @@
                 document.querySelector('#profileTokens .token:last-child .val').textContent = Number(user.skj_balance).toLocaleString();
             }
 
-            // Also load from stored token on page load (for non-Telegram testing)
-            async function loadStoredAuth() {
-                const token = localStorage.getItem('token');
-                if (!token) return;
-                try {
-                    const res = await fetch(API_BASE + '/api/auth/me', {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    });
-                    if (res.ok) {
-                        const user = await res.json();
-                        updateDashboard(user);
-                    }
-                } catch {}
-            }
-
             initAuth();
-            loadStoredAuth();
         </script>
         <script>
             const ACH_FRAMES = {

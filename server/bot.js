@@ -1,4 +1,5 @@
 const { Telegraf, Markup } = require('telegraf');
+const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
 const PUBLIC_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL;
@@ -8,6 +9,24 @@ const WEBAPP_URL = process.env.WEBAPP_URL || (PUBLIC_DOMAIN
 
 console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 
+function makeGameUrl(user) {
+  const token = jwt.sign(
+    { userId: user._id, telegramId: user.telegram_id },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' },
+  );
+  return `${WEBAPP_URL}?token=${token}`;
+}
+
+function makeDashUrl(user) {
+  const token = jwt.sign(
+    { userId: user._id, telegramId: user.telegram_id },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' },
+  );
+  return `${WEBAPP_URL}/dashboard?token=${token}`;
+}
+
 function initBot() {
   const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -16,17 +35,29 @@ function initBot() {
 
   bot.start(async (ctx) => {
     try {
-      const user = await User.findOne({ telegram_id: ctx.from.id });
+      let user = await User.findOne({ telegram_id: ctx.from.id });
       const name = ctx.from.first_name || 'Player';
-      const balance = user ? user.sk_balance : 1000;
+
+      if (!user) {
+        user = await User.create({
+          telegram_id: ctx.from.id,
+          username: ctx.from.username || null,
+          first_name: ctx.from.first_name || null,
+          last_name: ctx.from.last_name || null,
+          sk_balance: 1000,
+        });
+      }
+
+      const balance = user.sk_balance;
 
       await ctx.replyWithHTML(
         `🚀 <b>Welcome, ${name}!</b>\n\n` +
         `💰 SK Balance: <b>${balance.toLocaleString()}</b>\n\n` +
-        `Blast through waves of cosmic enemies and earn rewards!`,
+        `Blast through waves of cosmic enemies and earn rewards!\n\n` +
+        `<i>Opens in your browser for the best performance.</i>`,
         Markup.inlineKeyboard([
-          [Markup.button.webApp('🎮 Play Game', WEBAPP_URL)],
-          [Markup.button.webApp('📊 Dashboard', `${WEBAPP_URL}/dashboard`)]
+          [Markup.button.url('🎮 Play Game', makeGameUrl(user))],
+          [Markup.button.url('📊 Dashboard', makeDashUrl(user))]
         ])
       );
     } catch (err) {
@@ -45,11 +76,13 @@ function initBot() {
     );
   });
 
-  bot.command('play', (ctx) => {
+  bot.command('play', async (ctx) => {
+    let user = await User.findOne({ telegram_id: ctx.from.id });
+    if (!user) return ctx.reply('Use /start first to register.');
     ctx.reply(
       'Launch the game below!',
       Markup.inlineKeyboard([
-        [Markup.button.webApp('🎮 Play Game', WEBAPP_URL)]
+        [Markup.button.url('🎮 Play Game', makeGameUrl(user))]
       ])
     );
   });

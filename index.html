@@ -9981,9 +9981,19 @@
         </script>
 
         <script>
-            // ── Telegram WebApp Auth ──────────────────────────────────────────
+            // ── Auth ─────────────────────────────────────────────────────────
             const API_BASE = window.location.origin;
             let authToken = localStorage.getItem('token');
+
+            // Check for auth token in URL query parameter (for external browser launch)
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('token');
+            if (urlToken) {
+                authToken = urlToken;
+                localStorage.setItem('token', urlToken);
+                // Clean URL without reloading
+                window.history.replaceState({}, '', window.location.pathname);
+            }
 
             async function initGameAuth() {
                 try {
@@ -9991,9 +10001,7 @@
                     if (tg) {
                         tg.expand();
                         tg.ready();
-                        // Recalculate canvas size after WebApp expands
                         setTimeout(resizeCanvas, 100);
-                        // Hide BACK button in Telegram (WebApp has its own back)
                         document.getElementById('backBtn').style.display = 'none';
                         const user = tg.initDataUnsafe?.user;
                         if (user && !authToken) {
@@ -10012,7 +10020,6 @@
                             if (data.token) {
                                 authToken = data.token;
                                 localStorage.setItem('token', data.token);
-                                // Update HUD balance display
                                 const sk = Number(data.user.sk_balance).toLocaleString();
                                 const balEl = document.getElementById('balanceDisplay');
                                 if (balEl) balEl.textContent = sk;
@@ -10022,7 +10029,6 @@
                 } catch (err) {
                     console.error('Auth init error:', err);
                 }
-                // Still resize for non-Telegram viewing
                 if (!window.Telegram?.WebApp) resizeCanvas();
             }
 

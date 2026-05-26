@@ -548,12 +548,16 @@
             // ── Mobile Detection & Performance ─────────────────────────────────
             const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || ('ontouchstart' in window);
 
+            const MOBILE_QF = isMobile ? 0.4 : 1; // quality factor for particles/effects
+            const MAX_PARTICLES = isMobile ? 30 : 200;
+            function qp(val) { return isMobile ? Math.ceil(val * MOBILE_QF) : val; } // scale particle count
+
             // Cap shadowBlur on mobile (major performance killer)
             if (isMobile) {
                 const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
                 if (desc && desc.set) {
                     Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', {
-                        set(v) { desc.set.call(this, Math.min(v, 2)); },
+                        set(v) { desc.set.call(this, isMobile ? 0 : Math.min(v, 2)); },
                         get() { return desc.get ? desc.get.call(this) : 0; },
                     });
                 }
@@ -596,14 +600,16 @@
                 if (!el || el.dataset.started) return;
                 el.dataset.started = '1';
                 el.volume = 0.18;
-
-                const play = () => el.play().catch(() => {});
-                play();
-
-                const events = ['mousemove', 'click', 'keydown', 'touchstart', 'scroll', 'wheel'];
-                const unlock = () => { play(); events.forEach(ev => document.removeEventListener(ev, unlock)); };
-                events.forEach(ev => document.addEventListener(ev, unlock, { once: true }));
+                el.play().catch(() => {});
             }
+
+            // Play audio on first user interaction (required by mobile browsers)
+            function unlockAudio() {
+                const el = document.getElementById('bgMusic');
+                if (el && el.dataset.started && el.paused) el.play().catch(() => {});
+            }
+            const audioEvents = ['click', 'touchstart', 'keydown'];
+            audioEvents.forEach(ev => document.addEventListener(ev, unlockAudio, { once: true }));
 
             function playBulletFireSound() {
                 if (!bulletFireAudio) {
@@ -5504,6 +5510,10 @@
 
                 // Tick smoke
 
+                // Trim excess particles on mobile for performance
+                if (isMobile && smokeFX.length > MAX_PARTICLES) {
+                    smokeFX.splice(0, smokeFX.length - MAX_PARTICLES);
+                }
                 for (let i = smokeFX.length - 1; i >= 0; i--) {
                     const s = smokeFX[i];
 
@@ -5514,6 +5524,14 @@
                     s.angle += s.vAngle; // random rotation
 
                     if (s.alpha <= 0 || s.scale <= 0) smokeFX.splice(i, 1);
+                }
+
+                // Trim arrays on mobile for performance
+                if (isMobile) {
+                    const maxExplo = 5;
+                    const maxSparks = 15;
+                    if (explosionAnimations.length > maxExplo) explosionAnimations.splice(0, explosionAnimations.length - maxExplo);
+                    if (lightningSparks.length > maxSparks) lightningSparks.splice(0, lightningSparks.length - maxSparks);
                 }
 
                 // Tick explosion animations

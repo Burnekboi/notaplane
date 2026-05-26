@@ -6,34 +6,35 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         <script>
-            // Force redirect to system browser if opened inside Telegram
+            // Show an "Open in Browser" prompt if the game is inside Telegram's browser
             (function(){
                 var ua = navigator.userAgent;
                 if (!/Telegram/i.test(ua)) return;
 
                 setTimeout(function() {
+                    // If it's a real WebView with Telegram.WebApp, skip
+                    var tg = window.Telegram?.WebApp;
+                    if (tg && tg.initDataUnsafe) return;
+
                     var url = window.location.href;
+                    var isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
 
-                    // Android: use intent:// scheme to open default browser
-                    if (/Android/i.test(ua)) {
-                        window.location.href = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;end';
-                        return;
-                    }
+                    if (!isMobile) return; // desktop Telegram, fine
 
-                    // iOS: show overlay to open in Safari (no programmatic redirect possible)
-                    document.title = 'Open in Safari';
+                    // Replace page with "Open in Browser" prompt
+                    document.title = 'Open in Browser';
                     document.documentElement.innerHTML = '\
 <div style="display:flex;align-items:center;justify-content:center;height:100dvh;background:#0d0d1a;color:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif;text-align:center;padding:20px">\
   <div style="max-width:360px">\
-    <h1 style="font-size:22px;margin-bottom:12px;color:#ffcc00">Open in Safari</h1>\
-    <p style="font-size:15px;color:#aaa;line-height:1.5;margin-bottom:24px">\
-      For the best performance, open this page in Safari instead of Telegram.\
+    <h1 style="font-size:22px;margin-bottom:8px;color:#ffcc00">Open in Browser</h1>\
+    <p style="font-size:14px;color:#aaa;line-height:1.5;margin-bottom:24px">\
+      For the best performance, open this game in Chrome or Safari.\
     </p>\
-    <button onclick="var u=window.location.href;navigator.clipboard.writeText(u);this.textContent=\'Copied!\';setTimeout(function(){this.textContent=\'Copy URL\'},2000)"\
+    <button onclick="if(navigator.share){navigator.share({title:\'Space King Jackpot\',url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);this.textContent=\'Copied!\'}"\
       style="width:100%;padding:14px;font-size:16px;font-weight:600;background:#ffcc00;color:#000;border:none;border-radius:10px;cursor:pointer">\
-      Copy URL\
+      Open in Browser\
     </button>\
-    <p style="font-size:12px;color:#666;margin-top:12px">Copied! Open Safari and paste.</p>\
+    <p style="font-size:12px;color:#666;margin-top:12px" id="shareHint">Tap to copy the link, then paste it in your browser.</p>\
   </div>\
 </div>';
                 }, 300);
@@ -601,7 +602,7 @@
             const rotatePrompt = document.getElementById('rotatePrompt');
 
             function checkOrientation() {
-                if (window.innerHeight > window.innerWidth) {
+                if (isMobile && window.innerHeight > window.innerWidth) {
                     rotatePrompt.style.display = 'flex';
                 } else {
                     rotatePrompt.style.display = 'none';

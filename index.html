@@ -655,6 +655,10 @@
                 const rightTextboxX =
                     player.x + baseSize / 2 - textboxOverlap;
 
+                const key = `${leftTextboxX}|${textboxY}|${rightTextboxX}`;
+                if (key === layoutBaseHud._cache) return;
+                layoutBaseHud._cache = key;
+
                 const showHud = true;
 
                 leftHudBox.style.left = `${leftTextboxX}px`;
@@ -9836,6 +9840,7 @@
 
             let lastLoopTs = 0;
 
+            let _skipMobileDraw = false;
             function loop(ts) {
                 const dt = ts - lastLoopTs;
 
@@ -9917,6 +9922,8 @@
                     update(ts);
                 }
 
+                // Mobile: skip every other draw to halve GPU work
+                if (!isMobile || (_skipMobileDraw = !_skipMobileDraw))
                 draw();
 
                 requestAnimationFrame(loop);

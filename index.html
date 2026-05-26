@@ -2271,20 +2271,15 @@
             function resizeCanvas() {
                 const maxW = window.innerWidth;
                 const maxH = window.innerHeight;
-                const scale = Math.min(maxW / 800, maxH / 500, 1);
+                const scale = Math.min(maxW / 800, maxH / 500);
                 const wrap = document.getElementById('gameWrap');
                 wrap.style.transform = `scale(${scale})`;
                 wrap.style.transformOrigin = 'center center';
             }
 
             window.addEventListener('resize', resizeCanvas);
-            window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
+            window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
             resizeCanvas();
-
-            // Hide BACK button in Telegram WebApp
-            if (window.Telegram?.WebApp) {
-                document.getElementById('backBtn').style.display = 'none';
-            }
 
             function fireBullet() {
                 if (playerAttackLocked) return; // Lock attacks during D3 death sequence
@@ -9920,6 +9915,10 @@
                     if (tg) {
                         tg.expand();
                         tg.ready();
+                        // Recalculate canvas size after WebApp expands
+                        setTimeout(resizeCanvas, 100);
+                        // Hide BACK button in Telegram (WebApp has its own back)
+                        document.getElementById('backBtn').style.display = 'none';
                         const user = tg.initDataUnsafe?.user;
                         if (user && !authToken) {
                             const res = await fetch(API_BASE + '/api/auth/telegram', {
@@ -9947,6 +9946,8 @@
                 } catch (err) {
                     console.error('Auth init error:', err);
                 }
+                // Still resize for non-Telegram viewing
+                if (!window.Telegram?.WebApp) resizeCanvas();
             }
 
             initGameAuth();

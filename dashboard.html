@@ -1,0 +1,690 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Space King Jackpot — Dashboard</title>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                background: #000;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                overflow: hidden;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+            }
+            canvas {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+            }
+            #ui {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+                pointer-events: none;
+            }
+            #title {
+                width: min(300px, 35vw);
+                image-rendering: auto;
+            }
+            #profile {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                background: rgba(255,200,100,0.06);
+                border: 1px solid rgba(255,200,100,0.15);
+                border-radius: 8px;
+                padding: 10px 18px;
+                min-width: 280px;
+                pointer-events: auto;
+            }
+            #profile img {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                border: 2px solid rgba(255,200,100,0.3);
+                object-fit: cover;
+            }
+            #profileInfo {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            #profileInfo .name {
+                color: #ffd866;
+                font-size: 15px;
+                letter-spacing: 1px;
+            }
+            #profileInfo .id {
+                color: rgba(255,216,102,0.4);
+                font-size: 11px;
+                letter-spacing: 1px;
+            }
+            #profileInfo .rank {
+                color: rgba(100,200,255,0.7);
+                font-size: 10px;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+            }
+            #profileTokens {
+                display: flex;
+                gap: 16px;
+                margin-left: auto;
+            }
+            #profileTokens .token {
+                text-align: right;
+            }
+            #profileTokens .token .val {
+                color: #ffd866;
+                font-size: 14px;
+                letter-spacing: 1px;
+            }
+            #profileTokens .token .lbl {
+                color: rgba(255,216,102,0.35);
+                font-size: 9px;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+            }
+            #buttons {
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                pointer-events: auto;
+            }
+            .btn {
+                padding: 10px 40px;
+                border: 2px solid rgba(255, 200, 100, 0.5);
+                border-radius: 6px;
+                background: linear-gradient(180deg, rgba(255,200,100,0.15), rgba(200,140,40,0.08));
+                color: #ffd866;
+                font: bold 20px 'Impact', 'Arial Black', sans-serif;
+                letter-spacing: 2px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-shadow: 0 0 10px rgba(255,200,80,0.4);
+                box-shadow: 0 0 20px rgba(255,200,80,0.1);
+                text-decoration: none;
+                text-align: center;
+                min-width: 180px;
+            }
+            .btn:hover {
+                background: linear-gradient(180deg, rgba(255,200,100,0.3), rgba(200,140,40,0.18));
+                border-color: rgba(255,220,140,0.8);
+                color: #fff3bf;
+                text-shadow: 0 0 16px rgba(255,220,100,0.7);
+                box-shadow: 0 0 30px rgba(255,200,80,0.2);
+                transform: scale(1.04);
+            }
+            .btn:active {
+                transform: scale(0.97);
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="bgCanvas"></canvas>
+        <div id="ui">
+            <img id="title" src="assets/intro title.png" alt="Title">
+            <div id="profile">
+                <img src="dashboard assets/Profile boy.png" alt="Profile">
+                <div id="profileInfo">
+                    <span class="name">Christian Jake</span>
+                    <span class="id">ID: SJK-0001</span>
+                    <span class="rank">Cadet</span>
+                </div>
+                <div id="profileTokens">
+                    <div class="token">
+                        <div class="val">1,250</div>
+                        <div class="lbl">SJ Tokens</div>
+                    </div>
+                    <div class="token">
+                        <div class="val">0</div>
+                        <div class="lbl">SJK Tokens</div>
+                    </div>
+                </div>
+            </div>
+            <div id="buttons">
+                <a class="btn" href="index.html">PLAY</a>
+                <button class="btn" id="leaderboardBtn">LEADERBOARD</button>
+                <button class="btn" id="achievementsBtn">ACHIEVEMENTS</button>
+                <button class="btn" id="earnBtn">EARN</button>
+                <button class="btn" id="swapBtn">SWAP</button>
+                <button class="btn" id="aboutBtn">ABOUT</button>
+            </div>
+            <div id="trademark">NIRKA GAMES</div>
+        </div>
+        <div id="aboutModal">
+            <div id="aboutContent">
+                <button id="aboutClose" type="button">&times;</button>
+                <h2>Space King Jackpot</h2>
+                <p>A minimalist arcade-style space shooter where precision meets reward. Enter dynamic space arenas, target waves of cosmic creatures, and compete for high-value jackpots in real time.</p>
+                <br>
+                <p><strong>Free to Play (F2P)</strong><br>Just check in daily with no entry cost and receive free tokens to start playing. No barriers&mdash;log in, collect your bonus, and jump straight into the action.</p>
+                <br>
+                <p><strong>High Reward Payouts</strong><br>Land precise hits, defeat high-value targets, and trigger jackpot events with potentially high returns.</p>
+                <br>
+                <p><strong>Fast. Simple. Addictive.</strong><br>No complicated mechanics&mdash;just aim, shoot, and play through ever-changing space battles built for quick sessions or long runs.</p>
+                <br>
+                <p>A clean blend of arcade action and reward-driven gameplay set in deep space.</p>
+            </div>
+        </div>
+        <div id="achievementsModal">
+            <div id="achievementsContent">
+                <button id="achievementsClose" type="button">&times;</button>
+                <h2>ACHIEVEMENTS</h2>
+                <div class="achievement">
+                    <div class="achSpriteWrap" id="achHarbinger"></div>
+                    <div class="achInfo">
+                        <span class="achName">Harbinger</span>
+                        <span class="achTask">Kill Harbinger 100 times</span>
+                    </div>
+                    <div class="achReward">10,000 SK Tokens</div>
+                </div>
+                <div class="achievement">
+                    <div class="achSpriteWrap" id="achSpaceDraco"></div>
+                    <div class="achInfo">
+                        <span class="achName">SpaceDraco</span>
+                        <span class="achTask">Kill SpaceDraco 100 times</span>
+                    </div>
+                    <div class="achReward">10,000 SK Tokens</div>
+                </div>
+                <div class="achievement">
+                    <div class="achSpriteWrap" id="achNE2830"></div>
+                    <div class="achInfo">
+                        <span class="achName">NE-2830</span>
+                        <span class="achTask">Kill NE-2830 100 times</span>
+                    </div>
+                    <div class="achReward">10,000 SK Tokens</div>
+                </div>
+            </div>
+        </div>
+        <div id="earnModal">
+            <div id="earnContent">
+                <button id="earnClose" type="button">&times;</button>
+                <h2>EARN</h2>
+                <div class="earnTask" id="earnDaily">
+                    <div class="earnInfo">
+                        <span class="earnName">Daily Check-in</span>
+                        <span class="earnDesc">Claim your daily reward</span>
+                    </div>
+                    <div class="earnReward">+500</div>
+                </div>
+                <div class="earnTask" id="earnInvite">
+                    <div class="earnInfo">
+                        <span class="earnName">Invite Friends</span>
+                        <span class="earnDesc">+1000 per invite (max 10)</span>
+                    </div>
+                    <div class="earnRight">
+                        <div class="earnReward">+1000</div>
+                        <div class="earnCount">0 / 10</div>
+                    </div>
+                </div>
+                <div class="earnTask" id="earnTG">
+                    <div class="earnInfo">
+                        <span class="earnName">Join TG Channel</span>
+                        <span class="earnDesc">Follow our Telegram channel</span>
+                    </div>
+                    <div class="earnReward">+??</div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            #aboutModal {
+                display: none;
+                position: fixed;
+                z-index: 10;
+                left: 0; top: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                justify-content: center;
+                align-items: center;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+            }
+            #aboutContent {
+                background: #111;
+                border: 2px solid rgba(255,200,100,0.5);
+                border-radius: 10px;
+                padding: 30px 35px;
+                max-width: 480px;
+                text-align: center;
+                position: relative;
+                color: #ffd866;
+                box-shadow: 0 0 40px rgba(255,200,80,0.2);
+            }
+            #aboutContent h2 {
+                font-size: 24px;
+                margin-bottom: 14px;
+                letter-spacing: 2px;
+            }
+            #aboutContent p {
+                font-size: 14px;
+                line-height: 1.5;
+                font-family: Arial, sans-serif;
+                color: #ccc;
+                margin: 0;
+            }
+            #aboutClose {
+                position: absolute;
+                top: 8px; right: 14px;
+                background: none;
+                border: none;
+                color: #ffd866;
+                font-size: 28px;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+            }
+            #trademark {
+                color: rgba(255,216,102,0.35);
+                font-size: 11px;
+                letter-spacing: 3px;
+                margin-top: 10px;
+                pointer-events: auto;
+            }
+            #earnModal {
+                display: none;
+                position: fixed;
+                z-index: 10;
+                left: 0; top: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                justify-content: center;
+                align-items: center;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+            }
+            #earnContent {
+                background: #111;
+                border: 2px solid rgba(255,200,100,0.5);
+                border-radius: 10px;
+                padding: 30px 35px;
+                max-width: 460px;
+                width: 90%;
+                position: relative;
+                color: #ffd866;
+                box-shadow: 0 0 40px rgba(255,200,80,0.2);
+            }
+            #earnContent h2 {
+                text-align: center;
+                font-size: 22px;
+                letter-spacing: 3px;
+                margin-bottom: 20px;
+            }
+            #earnClose {
+                position: absolute;
+                top: 8px; right: 14px;
+                background: none;
+                border: none;
+                color: #ffd866;
+                font-size: 28px;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+            }
+            .earnTask {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                background: rgba(255,200,100,0.05);
+                border: 1px solid rgba(255,200,100,0.12);
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 10px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .earnTask:hover {
+                background: rgba(255,200,100,0.1);
+                border-color: rgba(255,200,100,0.3);
+            }
+            .earnTask:active {
+                transform: scale(0.98);
+            }
+            .earnInfo {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .earnName {
+                font-size: 15px;
+                letter-spacing: 1px;
+                color: #ffd866;
+            }
+            .earnDesc {
+                font-size: 12px;
+                font-family: Arial, sans-serif;
+                color: rgba(255,216,102,0.5);
+            }
+            .earnReward {
+                font-size: 15px;
+                color: #5dff5d;
+                text-align: right;
+                white-space: nowrap;
+                letter-spacing: 1px;
+            }
+            .earnRight {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 2px;
+            }
+            .earnCount {
+                font-size: 11px;
+                font-family: Arial, sans-serif;
+                color: rgba(255,216,102,0.4);
+            }
+            #achievementsModal {
+                display: none;
+                position: fixed;
+                z-index: 10;
+                left: 0; top: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                justify-content: center;
+                align-items: center;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+            }
+            #achievementsContent {
+                background: #111;
+                border: 2px solid rgba(255,200,100,0.5);
+                border-radius: 10px;
+                padding: 30px 35px;
+                max-width: 500px;
+                width: 90%;
+                position: relative;
+                color: #ffd866;
+                box-shadow: 0 0 40px rgba(255,200,80,0.2);
+            }
+            #achievementsContent h2 {
+                text-align: center;
+                font-size: 22px;
+                letter-spacing: 3px;
+                margin-bottom: 20px;
+            }
+            #achievementsClose {
+                position: absolute;
+                top: 8px; right: 14px;
+                background: none;
+                border: none;
+                color: #ffd866;
+                font-size: 28px;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+            }
+            .achievement {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                background: rgba(255,200,100,0.05);
+                border: 1px solid rgba(255,200,100,0.12);
+                border-radius: 8px;
+                padding: 12px 16px;
+                margin-bottom: 10px;
+            }
+            .achSpriteWrap {
+                width: 44px;
+                height: 44px;
+                border-radius: 4px;
+                background-color: rgba(0,0,0,0.3);
+                background-repeat: no-repeat;
+                overflow: hidden;
+                flex-shrink: 0;
+            }
+            .achInfo {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .achName {
+                font-size: 15px;
+                letter-spacing: 1px;
+                color: #ffd866;
+            }
+            .achTask {
+                font-size: 12px;
+                font-family: Arial, sans-serif;
+                color: rgba(255,216,102,0.5);
+            }
+            .achReward {
+                font-size: 13px;
+                color: #ffaa44;
+                text-align: right;
+                white-space: nowrap;
+                letter-spacing: 1px;
+            }
+        </style>
+        <script>
+            const canvas = document.getElementById('bgCanvas');
+            const ctx = canvas.getContext('2d');
+            let W, H;
+
+            function resize() {
+                W = canvas.width = window.innerWidth;
+                H = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            const STAR_COUNT = 250;
+            const stars = [];
+            for (let i = 0; i < STAR_COUNT; i++) {
+                stars.push({
+                    x: (Math.random() - 0.5) * 2,
+                    y: (Math.random() - 0.5) * 2,
+                    z: Math.random(),
+                    speed: 0.003 + Math.random() * 0.007,
+                    size: 0.5 + Math.random() * 1.5,
+                });
+            }
+
+            function draw() {
+                const cx = W / 2;
+                const cy = H / 2;
+
+                ctx.clearRect(0, 0, W, H);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, W, H);
+
+                for (let i = 0; i < stars.length; i++) {
+                    const s = stars[i];
+                    s.z -= s.speed;
+
+                    if (s.z <= 0) {
+                        s.x = (Math.random() - 0.5) * 2;
+                        s.y = (Math.random() - 0.5) * 2;
+                        s.z = 1;
+                        s.speed = 0.003 + Math.random() * 0.007;
+                        s.size = 0.5 + Math.random() * 1.5;
+                    }
+
+                    const px = cx + (s.x * 300) / s.z;
+                    const py = cy + (s.y * 300) / s.z;
+                    const drawSize = s.size * (1 - s.z * 0.6);
+
+                    if (px < 0 || px > W || py < 0 || py > H) continue;
+
+                    const brightness = 0.3 + (1 - s.z) * 0.7;
+
+                    ctx.save();
+                    ctx.globalAlpha = brightness;
+                    ctx.fillStyle = '#c8d8ff';
+                    ctx.shadowColor = '#6699ff';
+                    ctx.shadowBlur = drawSize * 2;
+                    ctx.beginPath();
+                    ctx.arc(px, py, drawSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            draw();
+
+            document.getElementById('leaderboardBtn').addEventListener('click', () => {
+                alert('Leaderboard — coming soon');
+            });
+
+            document.getElementById('achievementsBtn').addEventListener('click', () => {
+                document.getElementById('achievementsModal').style.display = 'flex';
+            });
+
+            document.getElementById('achievementsClose').addEventListener('click', () => {
+                document.getElementById('achievementsModal').style.display = 'none';
+            });
+
+            document.getElementById('achievementsModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    document.getElementById('achievementsModal').style.display = 'none';
+                }
+            });
+
+            document.getElementById('earnBtn').addEventListener('click', () => {
+                document.getElementById('earnModal').style.display = 'flex';
+            });
+
+            document.getElementById('earnClose').addEventListener('click', () => {
+                document.getElementById('earnModal').style.display = 'none';
+            });
+
+            document.getElementById('earnModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    document.getElementById('earnModal').style.display = 'none';
+                }
+            });
+
+            document.getElementById('earnDaily').addEventListener('click', () => {
+                alert('Daily Check-in — coming soon');
+            });
+
+            document.getElementById('earnInvite').addEventListener('click', () => {
+                alert('Invite Friends — coming soon');
+            });
+
+            document.getElementById('earnTG').addEventListener('click', () => {
+                alert('Join TG Channel — coming soon');
+            });
+
+            document.getElementById('aboutBtn').addEventListener('click', () => {
+                document.getElementById('aboutModal').style.display = 'flex';
+            });
+
+            document.getElementById('aboutClose').addEventListener('click', () => {
+                document.getElementById('aboutModal').style.display = 'none';
+            });
+
+            document.getElementById('aboutModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    document.getElementById('aboutModal').style.display = 'none';
+                }
+            });
+        </script>
+        <script>
+
+        </script>
+        <script>
+            const API_BASE = window.location.origin;
+
+            async function initAuth() {
+                try {
+                    const tg = window.Telegram?.WebApp;
+                    if (!tg) return console.warn('Not in Telegram WebApp');
+
+                    tg.expand();
+                    tg.ready();
+
+                    const user = tg.initDataUnsafe?.user;
+                    if (!user) return console.warn('No Telegram user data');
+
+                    const res = await fetch(API_BASE + '/api/auth/telegram', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            id: user.id,
+                            username: user.username,
+                            first_name: user.first_name,
+                            last_name: user.last_name,
+                            photo_url: user.photo_url,
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                        updateDashboard(data.user);
+                    }
+                } catch (err) {
+                    console.error('Auth failed:', err);
+                }
+            }
+
+            function updateDashboard(user) {
+                document.querySelector('#profileInfo .name').textContent = user.first_name || 'Player';
+                document.querySelector('#profileInfo .id').textContent = 'ID: SKJ-' + String(user.telegram_id).slice(-4).padStart(4, '0');
+                document.querySelector('#profileTokens .token:first-child .val').textContent = Number(user.sk_balance).toLocaleString();
+                document.querySelector('#profileTokens .token:last-child .val').textContent = Number(user.skj_balance).toLocaleString();
+            }
+
+            // Also load from stored token on page load (for non-Telegram testing)
+            async function loadStoredAuth() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/auth/me', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (res.ok) {
+                        const user = await res.json();
+                        updateDashboard(user);
+                    }
+                } catch {}
+            }
+
+            initAuth();
+            loadStoredAuth();
+        </script>
+        <script>
+            const ACH_FRAMES = {
+                harbinger: { src: 'assets/T6.png', cols: [4,320,636,952], rows: [3,479,955,1431], fw: 309, fh: 469, fi: 1 },
+                spaceDraco: { src: 'assets/T6C.png', cols: 4, rows: 4, fi: 4 },
+                ne2830: { src: 'assets/T6B.png', cols: 4, rows: 4, fi: 10 },
+            };
+            function bgFrame(el, data) {
+                const img = new Image();
+                img.onload = () => {
+                    if (Array.isArray(data.cols)) {
+                        const col = data.fi % data.cols.length;
+                        const row = Math.floor(data.fi / data.cols.length);
+                        const sx = data.cols[col], sy = data.rows[row];
+                        const s = Math.max(44 / data.fw, 44 / data.fh);
+                        el.style.backgroundImage = 'url(' + data.src + ')';
+                        el.style.backgroundSize = (img.naturalWidth * s) + 'px ' + (img.naturalHeight * s) + 'px';
+                        el.style.backgroundPosition = (-sx * s) + 'px ' + (-sy * s) + 'px';
+                    } else {
+                        const cw = img.naturalWidth / data.cols;
+                        const ch = img.naturalHeight / data.rows;
+                        const s = Math.max(44 / cw, 44 / ch);
+                        const col = data.fi % data.cols;
+                        const row = Math.floor(data.fi / data.cols);
+                        el.style.backgroundImage = 'url(' + data.src + ')';
+                        el.style.backgroundSize = (img.naturalWidth * s) + 'px ' + (img.naturalHeight * s) + 'px';
+                        el.style.backgroundPosition = (-col * cw * s) + 'px ' + (-row * ch * s) + 'px';
+                    }
+                };
+                img.src = data.src;
+            }
+            bgFrame(document.getElementById('achHarbinger'), ACH_FRAMES.harbinger);
+            bgFrame(document.getElementById('achSpaceDraco'), ACH_FRAMES.spaceDraco);
+            bgFrame(document.getElementById('achNE2830'), ACH_FRAMES.ne2830);
+        </script>
+    </body>
+</html>

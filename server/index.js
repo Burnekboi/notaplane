@@ -25,6 +25,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Root route — explicitly serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
 // Start HTTP server immediately (game files load right away)
 const server = app.listen(PORT, () => {
   const url = process.env.RAILWAY_PUBLIC_DOMAIN

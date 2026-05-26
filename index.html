@@ -4192,6 +4192,8 @@
 
             function spawnEnemy() {
                 if (gamePhase !== 'playing' || spawningPaused) return;
+                // Skip 40% of spawns to reduce overall enemy density
+                if (Math.random() < 0.4) return;
                 const side = Math.floor(Math.random() * 3);
 
                 const roll = Math.random();
@@ -4205,11 +4207,11 @@
                         ? 0
                         : roll < 0.06
                           ? 1
-                          : roll < 0.14
+                          : roll < 0.16
                             ? 2
-                            : roll < 0.30
+                            : roll < 0.38
                               ? 3
-                              : roll < 0.60
+                              : roll < 0.68
                                 ? 4
                                 : 5;
 
@@ -4498,7 +4500,7 @@
 
             // Solo T1A, T1B, T2 on dedicated fast timers
 
-            setInterval(spawnEnemy, 1200);
+            setInterval(spawnEnemy, 3500);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4615,7 +4617,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 3));
-            }, 6000);
+            }, 10000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4636,7 +4638,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 5));
-            }, 25000);
+            }, 35000);
 
             // ── T6C Spawn System ───────────────────────────────────────────────────
 

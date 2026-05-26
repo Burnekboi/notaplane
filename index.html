@@ -2787,18 +2787,17 @@
             }
 
             function scheduleD1() {
-                setTimeout(() => {
-                    // Remove any existing D1 first
-                    for (let i = enemies.length - 1; i >= 0; i--) {
-                        if (enemies[i].isD1) {
-                            enemies.splice(i, 1);
-                        }
+                const check = () => {
+                    const alive = enemies.filter(e => e.isD1);
+                    if (alive.length === 0 && d1Count === 0) {
+                        spawnD1();
+                        spawnD1();
+                        setTimeout(check, 10000); // Cooldown after spawn
+                    } else {
+                        setTimeout(check, 2000); // Check again soon
                     }
-                    d1Count = 0; // Reset counter
-                    spawnD1();
-                    spawnD1(); // Spawn 2 D1s
-                    scheduleD1();
-                }, 10000); // Every 10 seconds
+                };
+                setTimeout(check, 10000);
             }
 
             scheduleD1();
@@ -3710,7 +3709,7 @@
 
             // Boss System (T6 & T6B) ────────────────────────────────────────────────
 
-            const BOSS_INTERVAL = 60000; // 1 minute
+            const BOSS_INTERVAL = 15000; // 15 seconds
 
             // T6B reward scale: dragon strike uses 0.5s ticks (cadence DRAGON_FIRE_RATE); lightning /
             // nuke / bullets keep 1s ticks with the original 500ms stale window.
@@ -3810,7 +3809,7 @@
                     vy = 0;
                 }
 
-                if (bossState.bossHp === null) bossState.bossHp = t.hp;
+                if (bossState.bossHp === null || bossState.bossHp <= 0) bossState.bossHp = t.hp;
 
                 const boss = {
                     x,
@@ -3957,6 +3956,8 @@
 
                             bossState.currentType =
                                 bossState.currentType === "T6" ? "T6B" : "T6";
+
+                            bossState.bossHp = null;
 
                             bossState.t6bRewardScale = 200;
 
@@ -4192,26 +4193,22 @@
 
             function spawnEnemy() {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                // Skip 40% of spawns to reduce overall enemy density
-                if (Math.random() < 0.4) return;
                 const side = Math.floor(Math.random() * 3);
 
                 const roll = Math.random();
 
                 // T1A=0, T1B=1, T2=2, T3=3, T4=4, T5=5
 
-                // T1A+T1B heavy, good T2 presence
-
                 const tier =
-                    roll < 0.03
+                    roll < 0.22
                         ? 0
-                        : roll < 0.06
+                        : roll < 0.44
                           ? 1
-                          : roll < 0.16
+                          : roll < 0.63
                             ? 2
-                            : roll < 0.38
+                            : roll < 0.865
                               ? 3
-                              : roll < 0.68
+                              : roll < 0.985
                                 ? 4
                                 : 5;
 
@@ -4500,7 +4497,7 @@
 
             // Solo T1A, T1B, T2 on dedicated fast timers
 
-            setInterval(spawnEnemy, 3500);
+            setInterval(spawnEnemy, 1200);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4532,7 +4529,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 0));
-            }, 5000);
+            }, 1800);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4564,7 +4561,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 1));
-            }, 5000);
+            }, 2000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4596,7 +4593,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 2));
-            }, 5000);
+            }, 2500);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4617,7 +4614,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 3));
-            }, 10000);
+            }, 3000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4638,7 +4635,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 5));
-            }, 35000);
+            }, 15000);
 
             // ── T6C Spawn System ───────────────────────────────────────────────────
 
@@ -4683,7 +4680,7 @@
                 const ti = Math.random() < 0.5 ? 0 : 1;
 
                 spawnRow(side, ENEMY_TIERS[ti], ti);
-            }, 16000);
+            }, 6000);
 
             // Rare elite spawn — one T1A Elite (9) or T1B Elite (10) every 5s
 
@@ -4721,9 +4718,9 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, wave, ti));
-            }, 20000);
+            }, 5000);
 
-            // 3x T1A row every 20 seconds (slow wave movement)
+            // 3x T1A row every 12 seconds (slow wave movement)
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4731,11 +4728,11 @@
                 const t = ENEMY_TIERS[0]; // T1A
                 const ti = 0;
                 const count = 3;
-                const speed = 0.7 + Math.random() * 0.4; // Slower than regular T1A
+                const speed = 0.7 + Math.random() * 0.4;
                 const drift = 0.2;
 
                 let baseY, baseX, vx, vy;
-                const wave = true; // Use the wave movement pattern same as T1B
+                const wave = true;
 
                 if (side === 0) {
                     baseY = 40 + Math.random() * (H - 140);
@@ -4756,9 +4753,7 @@
                     for (let i = 0; i < count; i++)
                         enemies.push(makeEnemy(baseX, -t.size - i * ROW_GAP, vx, vy, t, wave, ti));
                 }
-            }, 30000);
-
-            // Elite T2 spawn — once every 10 seconds
+            }, 12000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4809,7 +4804,7 @@
                 eliteT2.wavePattern = wavePattern;
 
                 enemies.push(eliteT2);
-            }, 25000);
+            }, 12000);
 
             // ── Update ────────────────────────────────────────────────────────
 
@@ -5013,7 +5008,7 @@
 
                     bossState.t6bRewardScale = 200;
 
-                    bossState.nextSpawn = performance.now() + 60000;
+                    bossState.nextSpawn = performance.now() + BOSS_INTERVAL;
                 }
 
                 if (e.isD2) {
@@ -5053,6 +5048,7 @@
             }
 
             function update(ts) {
+                try {
                 flushPendingRewards();
 
                 for (let i = activeTitles.length - 1; i >= 0; i--) {
@@ -5118,6 +5114,7 @@
 
                 for (let i = eliteT2Missiles.length - 1; i >= 0; i--) {
                     const m = eliteT2Missiles[i];
+                    if (!m) continue;
 
                     m.age++;
 
@@ -5508,6 +5505,7 @@
 
                 for (let i = activeMissiles.length - 1; i >= 0; i--) {
                     const m = activeMissiles[i];
+                    if (!m) continue;
 
                     m.progress += m.speed;
 
@@ -6044,6 +6042,7 @@
                 // Dragon Power — visual only, damage already applied on fire
                 for (let i = thunderAttacks.length - 1; i >= 0; i--) {
                     const thunder = thunderAttacks[i];
+                    if (!thunder) continue;
                     thunder.ttl -= 16.67;
                     if (thunder.ttl <= 0) thunderAttacks.splice(i, 1);
                 }
@@ -6051,6 +6050,7 @@
                 // Dragon Impact FX tick
                 for (let i = dragonImpactFX.length - 1; i >= 0; i--) {
                     const fx = dragonImpactFX[i];
+                    if (!fx) continue;
                     fx.age += 16.67;
                     for (const sp of fx.sparks) {
                         sp.x += sp.vx;
@@ -6064,6 +6064,7 @@
                 // Dragon base orb attack FX tick
                 for (let i = dragonBaseAttackFX.length - 1; i >= 0; i--) {
                     const fx = dragonBaseAttackFX[i];
+                    if (!fx) continue;
                     fx.age += 16.67;
                     for (const sp of fx.sparks) {
                         sp.x += sp.vx;
@@ -6078,6 +6079,7 @@
 
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     const e = enemies[i];
+                    if (!e) continue;
 
                     e.age += 0.04;
 
@@ -6299,9 +6301,10 @@
                             e.y < -120 ||
                             e.y > H + 120)
                     ) {
+                        if (e.isD1) d1Count = Math.max(0, d1Count - 1);
                         if (e.isD3) {
                             d3Active = false;
-                            playerAttackLocked = false; // Release attack lock if D3 leaves screen
+                            playerAttackLocked = false;
                         }
                         if (e.isD4) d4Active = false;
 
@@ -6475,9 +6478,10 @@
                     document.getElementById("rtpDisplay").textContent =
                         `Shots: ${rtp.totalSpent}  Won: ${rtp.totalPaid.toFixed(0)}  RTP: ${rtpPct}%`;
                 }
+                } catch (err) {
+                    console.error('update error:', err, err.stack);
+                }
             }
-
-            // ── Draw ──────────────────────────────────────────────────────────────────
 
             function drawIntro() {
                 const introNow = performance.now();

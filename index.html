@@ -2,44 +2,7 @@
 
 <html>
     <head>
-        <title>Space King Jackpot</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-        <script src="https://telegram.org/js/telegram-web-app.js"></script>
-        <script>
-            // Show an "Open in Browser" prompt if the game is inside Telegram's browser
-            (function(){
-                var ua = navigator.userAgent;
-                if (!/Telegram/i.test(ua)) return;
-
-                setTimeout(function() {
-                    // If it's a real WebView with Telegram.WebApp, skip
-                    var tg = window.Telegram?.WebApp;
-                    if (tg && tg.initDataUnsafe) return;
-
-                    var url = window.location.href;
-                    var isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
-
-                    if (!isMobile) return; // desktop Telegram, fine
-
-                    // Replace page with "Open in Browser" prompt
-                    document.title = 'Open in Browser';
-                    document.documentElement.innerHTML = '\
-<div style="display:flex;align-items:center;justify-content:center;height:100dvh;background:#0d0d1a;color:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif;text-align:center;padding:20px">\
-  <div style="max-width:360px">\
-    <h1 style="font-size:22px;margin-bottom:8px;color:#ffcc00">Open in Browser</h1>\
-    <p style="font-size:14px;color:#aaa;line-height:1.5;margin-bottom:24px">\
-      For the best performance, open this game in Chrome or Safari.\
-    </p>\
-    <button onclick="if(navigator.share){navigator.share({title:\'Space King Jackpot\',url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);this.textContent=\'Copied!\'}"\
-      style="width:100%;padding:14px;font-size:16px;font-weight:600;background:#ffcc00;color:#000;border:none;border-radius:10px;cursor:pointer">\
-      Open in Browser\
-    </button>\
-    <p style="font-size:12px;color:#666;margin-top:12px" id="shareHint">Tap to copy the link, then paste it in your browser.</p>\
-  </div>\
-</div>';
-                }, 300);
-            })();
-        </script>
+        <title>Shooter Prototype</title>
 
         <style>
             * {
@@ -61,55 +24,11 @@
 
                 align-items: center;
 
-                height: 100dvh;
-
-                width: 100dvw;
+                height: 100vh;
 
                 overflow: hidden;
 
-                margin: 0;
-
-                gap: 0;
-            }
-
-            #loadingScreen {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: #000; display: flex; flex-direction: column;
-                align-items: center; justify-content: center; z-index: 9999;
-            }
-            #loadingTitle {
-                width: min(300px, 35vw); margin-bottom: 30px;
-                image-rendering: auto;
-            }
-            #loadingBarWrap {
-                width: 260px; height: 6px; background: #1a1a1a;
-                border-radius: 3px; overflow: hidden;
-            }
-            #loadingBar {
-                height: 100%; width: 0%;
-                background: linear-gradient(90deg, #ffd866, #ffaa00);
-                border-radius: 3px; transition: width 0.2s;
-            }
-            #loadingText {
-                color: rgba(255,216,102,0.5); font: 12px Arial;
-                margin-top: 12px; letter-spacing: 1px;
-            }
-            #rotatePrompt {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: #000; z-index: 99999; display: none;
-                flex-direction: column; align-items: center; justify-content: center;
-            }
-            #rotateIcon {
-                font-size: 64px; color: #ffd866; animation: rotateHint 2s ease-in-out infinite;
-                margin-bottom: 24px;
-            }
-            @keyframes rotateHint {
-                0%, 100% { transform: rotate(0deg); }
-                50% { transform: rotate(90deg); }
-            }
-            #rotateText {
-                color: rgba(255,216,102,0.7); font: bold 16px Arial;
-                text-align: center; letter-spacing: 1px; line-height: 1.6;
+                gap: 10px;
             }
 
             canvas {
@@ -118,8 +37,6 @@
                 box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 
                 cursor: crosshair;
-
-                touch-action: none;
             }
 
             #ui {
@@ -507,17 +424,6 @@
     </head>
 
     <body>
-        <div id="loadingScreen">
-            <img id="loadingTitle" src="assets/intro title.png" alt="Loading" />
-            <div id="loadingBarWrap">
-                <div id="loadingBar"></div>
-            </div>
-            <div id="loadingText">Loading assets...</div>
-        </div>
-        <div id="rotatePrompt">
-            <div id="rotateIcon">↻</div>
-            <div id="rotateText">Please rotate your device<br/>to landscape mode</div>
-        </div>
         <div id="gameWrap">
             <canvas id="game"></canvas>
             <a id="backBtn" href="dashboard.html">&#8592; BACK</a>
@@ -580,40 +486,6 @@
             hitCanvas.height = 600;
             const hitCtx = hitCanvas.getContext('2d');
 
-            // ── Mobile Detection & Performance ─────────────────────────────────
-            const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || ('ontouchstart' in window);
-
-            const MOBILE_QF = isMobile ? 0.4 : 1; // quality factor for particles/effects
-            const MAX_PARTICLES = isMobile ? 30 : 200;
-            function qp(val) { return isMobile ? Math.ceil(val * MOBILE_QF) : val; } // scale particle count
-
-            // Cap shadowBlur on mobile (major performance killer)
-            if (isMobile) {
-                const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
-                if (desc && desc.set) {
-                    Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', {
-                        set(v) { desc.set.call(this, isMobile ? 0 : Math.min(v, 2)); },
-                        get() { return desc.get ? desc.get.call(this) : 0; },
-                    });
-                }
-            }
-
-            // ── Orientation Detection ───────────────────────────────────────────
-            const rotatePrompt = document.getElementById('rotatePrompt');
-
-            function checkOrientation() {
-                if (isMobile && window.innerHeight > window.innerWidth) {
-                    rotatePrompt.style.display = 'flex';
-                } else {
-                    rotatePrompt.style.display = 'none';
-                    if (typeof resizeCanvas === 'function') resizeCanvas();
-                }
-            }
-
-            window.addEventListener('resize', () => { checkOrientation(); resizeCanvas(); });
-            window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 300));
-            checkOrientation();
-
             let audioCtx = null;
             let bulletFireAudio = null;
             let missileFireAudio = null;
@@ -635,16 +507,14 @@
                 if (!el || el.dataset.started) return;
                 el.dataset.started = '1';
                 el.volume = 0.18;
-                el.play().catch(() => {});
-            }
 
-            // Play audio on first user interaction (required by mobile browsers)
-            function unlockAudio() {
-                const el = document.getElementById('bgMusic');
-                if (el && el.dataset.started && el.paused) el.play().catch(() => {});
+                const play = () => el.play().catch(() => {});
+                play();
+
+                const events = ['mousemove', 'click', 'keydown', 'touchstart', 'scroll', 'wheel'];
+                const unlock = () => { play(); events.forEach(ev => document.removeEventListener(ev, unlock)); };
+                events.forEach(ev => document.addEventListener(ev, unlock, { once: true }));
             }
-            const audioEvents = ['click', 'touchstart', 'keydown'];
-            audioEvents.forEach(ev => document.addEventListener(ev, unlockAudio, { once: true }));
 
             function playBulletFireSound() {
                 if (!bulletFireAudio) {
@@ -689,10 +559,6 @@
                     player.x - baseSize / 2 - textboxW + textboxOverlap;
                 const rightTextboxX =
                     player.x + baseSize / 2 - textboxOverlap;
-
-                const key = `${leftTextboxX}|${textboxY}|${rightTextboxX}`;
-                if (key === layoutBaseHud._cache) return;
-                layoutBaseHud._cache = key;
 
                 const showHud = true;
 
@@ -2339,44 +2205,6 @@
                 clearInterval(burstInterval);
             });
 
-            // ── Touch / Mobile Support ─────────────────────────────────────────────
-            canvas.addEventListener("touchstart", (e) => {
-                e.preventDefault();
-                const touch = e.touches[0];
-                const mouseEvent = new MouseEvent("mousedown", {
-                    clientX: touch.clientX, clientY: touch.clientY,
-                });
-                canvas.dispatchEvent(mouseEvent);
-            }, { passive: false });
-
-            canvas.addEventListener("touchmove", (e) => {
-                e.preventDefault();
-                const touch = e.touches[0];
-                const mouseEvent = new MouseEvent("mousemove", {
-                    clientX: touch.clientX, clientY: touch.clientY,
-                });
-                canvas.dispatchEvent(mouseEvent);
-            }, { passive: false });
-
-            canvas.addEventListener("touchend", (e) => {
-                e.preventDefault();
-                canvas.dispatchEvent(new MouseEvent("mouseup"));
-            }, { passive: false });
-
-            // ── Responsive Canvas Scaling ──────────────────────────────────────────
-            function resizeCanvas() {
-                const maxW = window.innerWidth;
-                const maxH = window.innerHeight;
-                const scale = Math.min(maxW / 800, maxH / 500);
-                const wrap = document.getElementById('gameWrap');
-                wrap.style.transform = `scale(${scale})`;
-                wrap.style.transformOrigin = 'center center';
-            }
-
-            window.addEventListener('resize', resizeCanvas);
-            window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
-            resizeCanvas();
-
             function fireBullet() {
                 if (playerAttackLocked) return; // Lock attacks during D3 death sequence
 
@@ -2458,7 +2286,7 @@
                 },
 
                 {
-                    size: 49,
+                    size: 74,
                     hp: 72,
                     mult: 100,
                     speed: 0.35,
@@ -2467,7 +2295,7 @@
                 },
 
                 {
-                    size: 200,
+                    size: 100,
                     hp: 480,
                     mult: 500,
                     speed: 0.25,
@@ -2521,7 +2349,7 @@
                 // T6B Boss — index 11
 
                 {
-                    size: 200,
+                    size: 100,
                     hp: 570,
                     mult: 200,
                     speed: 0.25,
@@ -2565,7 +2393,7 @@
                 // T6C — index 15 (reward pool boss, 85% block, frame-based movement)
 
                 {
-                    size: 240,
+                    size: 120,
                     hp: 2000,
                     mult: 0,
                     speed: 0.7,
@@ -2787,17 +2615,18 @@
             }
 
             function scheduleD1() {
-                const check = () => {
-                    const alive = enemies.filter(e => e.isD1);
-                    if (alive.length === 0 && d1Count === 0) {
-                        spawnD1();
-                        spawnD1();
-                        setTimeout(check, 10000); // Cooldown after spawn
-                    } else {
-                        setTimeout(check, 2000); // Check again soon
+                setTimeout(() => {
+                    // Remove any existing D1 first
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        if (enemies[i].isD1) {
+                            enemies.splice(i, 1);
+                        }
                     }
-                };
-                setTimeout(check, 10000);
+                    d1Count = 0; // Reset counter
+                    spawnD1();
+                    spawnD1(); // Spawn 2 D1s
+                    scheduleD1();
+                }, 15000); // Every 15 seconds
             }
 
             scheduleD1();
@@ -3709,7 +3538,7 @@
 
             // Boss System (T6 & T6B) ────────────────────────────────────────────────
 
-            const BOSS_INTERVAL = 15000; // 15 seconds
+            const BOSS_INTERVAL = 60000; // 1 minute
 
             // T6B reward scale: dragon strike uses 0.5s ticks (cadence DRAGON_FIRE_RATE); lightning /
             // nuke / bullets keep 1s ticks with the original 500ms stale window.
@@ -3809,7 +3638,7 @@
                     vy = 0;
                 }
 
-                if (bossState.bossHp === null || bossState.bossHp <= 0) bossState.bossHp = t.hp;
+                if (bossState.bossHp === null) bossState.bossHp = t.hp;
 
                 const boss = {
                     x,
@@ -3956,8 +3785,6 @@
 
                             bossState.currentType =
                                 bossState.currentType === "T6" ? "T6B" : "T6";
-
-                            bossState.bossHp = null;
 
                             bossState.t6bRewardScale = 200;
 
@@ -4199,6 +4026,8 @@
 
                 // T1A=0, T1B=1, T2=2, T3=3, T4=4, T5=5
 
+                // T1A+T1B heavy, good T2 presence
+
                 const tier =
                     roll < 0.22
                         ? 0
@@ -4216,7 +4045,7 @@
 
                 // T1A rows are straight/diagonal, T1B rows are wave
 
-                if ((tier === 0 || tier === 1) && Math.random() < 0.05) {
+                if ((tier === 0 || tier === 1) && Math.random() < 0.28) {
                     spawnRow(side, t, tier);
                     return;
                 }
@@ -4529,7 +4358,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 0));
-            }, 1800);
+            }, 1200);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4561,7 +4390,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 1));
-            }, 2000);
+            }, 1400);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4593,7 +4422,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 2));
-            }, 2500);
+            }, 1800);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4614,7 +4443,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 3));
-            }, 3000);
+            }, 2200);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4635,7 +4464,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 5));
-            }, 15000);
+            }, 12000);
 
             // ── T6C Spawn System ───────────────────────────────────────────────────
 
@@ -4680,7 +4509,7 @@
                 const ti = Math.random() < 0.5 ? 0 : 1;
 
                 spawnRow(side, ENEMY_TIERS[ti], ti);
-            }, 6000);
+            }, 4000);
 
             // Rare elite spawn — one T1A Elite (9) or T1B Elite (10) every 5s
 
@@ -4720,7 +4549,7 @@
                 enemies.push(makeEnemy(x, y, vx, vy, t, wave, ti));
             }, 5000);
 
-            // 3x T1A row every 12 seconds (slow wave movement)
+            // 3x T1A row every 10 seconds (slow wave movement)
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4728,11 +4557,11 @@
                 const t = ENEMY_TIERS[0]; // T1A
                 const ti = 0;
                 const count = 3;
-                const speed = 0.7 + Math.random() * 0.4;
+                const speed = 0.7 + Math.random() * 0.4; // Slower than regular T1A
                 const drift = 0.2;
 
                 let baseY, baseX, vx, vy;
-                const wave = true;
+                const wave = true; // Use the wave movement pattern same as T1B
 
                 if (side === 0) {
                     baseY = 40 + Math.random() * (H - 140);
@@ -4753,7 +4582,9 @@
                     for (let i = 0; i < count; i++)
                         enemies.push(makeEnemy(baseX, -t.size - i * ROW_GAP, vx, vy, t, wave, ti));
                 }
-            }, 12000);
+            }, 10000);
+
+            // Elite T2 spawn — once every 10 seconds
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4804,7 +4635,7 @@
                 eliteT2.wavePattern = wavePattern;
 
                 enemies.push(eliteT2);
-            }, 12000);
+            }, 10000);
 
             // ── Update ────────────────────────────────────────────────────────
 
@@ -5008,7 +4839,7 @@
 
                     bossState.t6bRewardScale = 200;
 
-                    bossState.nextSpawn = performance.now() + BOSS_INTERVAL;
+                    bossState.nextSpawn = performance.now() + 60000;
                 }
 
                 if (e.isD2) {
@@ -5048,7 +4879,6 @@
             }
 
             function update(ts) {
-                try {
                 flushPendingRewards();
 
                 for (let i = activeTitles.length - 1; i >= 0; i--) {
@@ -5114,7 +4944,6 @@
 
                 for (let i = eliteT2Missiles.length - 1; i >= 0; i--) {
                     const m = eliteT2Missiles[i];
-                    if (!m) continue;
 
                     m.age++;
 
@@ -5505,7 +5334,6 @@
 
                 for (let i = activeMissiles.length - 1; i >= 0; i--) {
                     const m = activeMissiles[i];
-                    if (!m) continue;
 
                     m.progress += m.speed;
 
@@ -5549,10 +5377,6 @@
 
                 // Tick smoke
 
-                // Trim excess particles on mobile for performance
-                if (isMobile && smokeFX.length > MAX_PARTICLES) {
-                    smokeFX.splice(0, smokeFX.length - MAX_PARTICLES);
-                }
                 for (let i = smokeFX.length - 1; i >= 0; i--) {
                     const s = smokeFX[i];
 
@@ -5563,14 +5387,6 @@
                     s.angle += s.vAngle; // random rotation
 
                     if (s.alpha <= 0 || s.scale <= 0) smokeFX.splice(i, 1);
-                }
-
-                // Trim arrays on mobile for performance
-                if (isMobile) {
-                    const maxExplo = 5;
-                    const maxSparks = 15;
-                    if (explosionAnimations.length > maxExplo) explosionAnimations.splice(0, explosionAnimations.length - maxExplo);
-                    if (lightningSparks.length > maxSparks) lightningSparks.splice(0, lightningSparks.length - maxSparks);
                 }
 
                 // Tick explosion animations
@@ -6042,7 +5858,6 @@
                 // Dragon Power — visual only, damage already applied on fire
                 for (let i = thunderAttacks.length - 1; i >= 0; i--) {
                     const thunder = thunderAttacks[i];
-                    if (!thunder) continue;
                     thunder.ttl -= 16.67;
                     if (thunder.ttl <= 0) thunderAttacks.splice(i, 1);
                 }
@@ -6050,7 +5865,6 @@
                 // Dragon Impact FX tick
                 for (let i = dragonImpactFX.length - 1; i >= 0; i--) {
                     const fx = dragonImpactFX[i];
-                    if (!fx) continue;
                     fx.age += 16.67;
                     for (const sp of fx.sparks) {
                         sp.x += sp.vx;
@@ -6064,7 +5878,6 @@
                 // Dragon base orb attack FX tick
                 for (let i = dragonBaseAttackFX.length - 1; i >= 0; i--) {
                     const fx = dragonBaseAttackFX[i];
-                    if (!fx) continue;
                     fx.age += 16.67;
                     for (const sp of fx.sparks) {
                         sp.x += sp.vx;
@@ -6079,7 +5892,6 @@
 
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     const e = enemies[i];
-                    if (!e) continue;
 
                     e.age += 0.04;
 
@@ -6301,10 +6113,9 @@
                             e.y < -120 ||
                             e.y > H + 120)
                     ) {
-                        if (e.isD1) d1Count = Math.max(0, d1Count - 1);
                         if (e.isD3) {
                             d3Active = false;
-                            playerAttackLocked = false;
+                            playerAttackLocked = false; // Release attack lock if D3 leaves screen
                         }
                         if (e.isD4) d4Active = false;
 
@@ -6478,10 +6289,9 @@
                     document.getElementById("rtpDisplay").textContent =
                         `Shots: ${rtp.totalSpent}  Won: ${rtp.totalPaid.toFixed(0)}  RTP: ${rtpPct}%`;
                 }
-                } catch (err) {
-                    console.error('update error:', err, err.stack);
-                }
             }
+
+            // ── Draw ──────────────────────────────────────────────────────────────────
 
             function drawIntro() {
                 const introNow = performance.now();
@@ -9881,7 +9691,6 @@
 
             let lastLoopTs = 0;
 
-            let _skipMobileDraw = false;
             function loop(ts) {
                 const dt = ts - lastLoopTs;
 
@@ -9963,120 +9772,12 @@
                     update(ts);
                 }
 
-                // Mobile: skip every other draw to halve GPU work
-                if (!isMobile || (_skipMobileDraw = !_skipMobileDraw))
                 draw();
 
                 requestAnimationFrame(loop);
             }
 
-            // ── Asset Preloader ───────────────────────────────────────────────────
-            const ASSETS = [
-                "assets/T1A.png","assets/T1B.png","assets/T2.png","assets/T3.png",
-                "assets/T4.png","assets/T5.png","assets/T6.png","assets/T6 title.png",
-                "assets/T6B.png","assets/T6B title.png","assets/T6C.png","assets/T6C title.png",
-                "assets/D1.png","assets/D1 title.png","assets/D2.png","assets/D2 title.png",
-                "assets/D3.png","assets/D3 title.png","assets/D4.png","assets/D4 title.png",
-                "assets/base cannon.png","assets/base missile.png","assets/base thunder.png",
-                "assets/bullet.png","assets/cannon.png","assets/cosmos.png",
-                "assets/dragonstrike icon.png","assets/electric ball.png","assets/explosionC.png",
-                "assets/intro title.png","assets/missile icon.png","assets/missile launcher2.png",
-                "assets/missile.png","assets/missileB.png","assets/nT1AT1B title.png",
-                "assets/smoke.png","assets/textbox.png",
-                "assets/lightning ball.json",
-                "sfx/bullet fire.mp3","sfx/dragon fire.mp3","sfx/missile fire.mp3",
-            ];
-
-            const loadingBar = document.getElementById('loadingBar');
-            const loadingText = document.getElementById('loadingText');
-            const loadingScreen = document.getElementById('loadingScreen');
-            let loadedCount = 0;
-            const totalAssets = ASSETS.length;
-
-            function onAssetLoaded() {
-                loadedCount++;
-                const pct = Math.round(loadedCount / totalAssets * 100);
-                loadingBar.style.width = pct + '%';
-                loadingText.textContent = 'Loading... ' + pct + '%';
-                if (loadedCount >= totalAssets) {
-                    loadingScreen.style.display = 'none';
-                    requestAnimationFrame(loop);
-                }
-            }
-
-            ASSETS.forEach(path => {
-                if (path.endsWith('.mp3')) {
-                    const a = new Audio(path);
-                    a.addEventListener('canplaythrough', onAssetLoaded);
-                    a.addEventListener('error', onAssetLoaded);
-                    a.load();
-                } else if (path.endsWith('.json')) {
-                    fetch(path).then(onAssetLoaded).catch(onAssetLoaded);
-                } else {
-                    const img = new Image();
-                    img.onload = onAssetLoaded;
-                    img.onerror = onAssetLoaded;
-                    img.src = path;
-                }
-            });
-        </script>
-
-        <script>
-            // ── Auth ─────────────────────────────────────────────────────────
-            const RAILWAY_HOST = 'notaplane.up.railway.app';
-            const API_BASE = window.location.origin.includes(RAILWAY_HOST)
-              ? window.location.origin
-              : 'https://' + RAILWAY_HOST;
-            let authToken = localStorage.getItem('token');
-
-            // Check for auth token in URL query parameter (for external browser launch)
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlToken = urlParams.get('token');
-            if (urlToken) {
-                authToken = urlToken;
-                localStorage.setItem('token', urlToken);
-                // Clean URL without reloading
-                window.history.replaceState({}, '', window.location.pathname);
-            }
-
-            async function initGameAuth() {
-                try {
-                    const tg = window.Telegram?.WebApp;
-                    if (tg) {
-                        tg.expand();
-                        tg.ready();
-                        setTimeout(resizeCanvas, 100);
-                        document.getElementById('backBtn').style.display = 'none';
-                        const user = tg.initDataUnsafe?.user;
-                        if (user && !authToken) {
-                            const res = await fetch(API_BASE + '/api/auth/telegram', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    id: user.id,
-                                    username: user.username,
-                                    first_name: user.first_name,
-                                    last_name: user.last_name,
-                                    photo_url: user.photo_url,
-                                })
-                            });
-                            const data = await res.json();
-                            if (data.token) {
-                                authToken = data.token;
-                                localStorage.setItem('token', data.token);
-                                const sk = Number(data.user.sk_balance).toLocaleString();
-                                const balEl = document.getElementById('balanceDisplay');
-                                if (balEl) balEl.textContent = sk;
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.error('Auth init error:', err);
-                }
-                if (!window.Telegram?.WebApp) resizeCanvas();
-            }
-
-            initGameAuth();
+            requestAnimationFrame(loop);
         </script>
     </body>
 </html>

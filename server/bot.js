@@ -1,7 +1,12 @@
 const { Telegraf, Markup } = require('telegraf');
 const User = require('./models/User');
 
-const WEBAPP_URL = process.env.WEBAPP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000');
+const PUBLIC_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL;
+const WEBAPP_URL = process.env.WEBAPP_URL || (PUBLIC_DOMAIN
+  ? `https://${PUBLIC_DOMAIN}`
+  : 'http://localhost:3000');
+
+console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 
 function initBot() {
   const bot = new Telegraf(process.env.BOT_TOKEN);

@@ -4201,15 +4201,15 @@
                 // T1A+T1B heavy, good T2 presence
 
                 const tier =
-                    roll < 0.11
+                    roll < 0.03
                         ? 0
-                        : roll < 0.22
+                        : roll < 0.06
                           ? 1
-                          : roll < 0.41
+                          : roll < 0.14
                             ? 2
-                            : roll < 0.645
+                            : roll < 0.30
                               ? 3
-                              : roll < 0.765
+                              : roll < 0.60
                                 ? 4
                                 : 5;
 
@@ -4217,7 +4217,7 @@
 
                 // T1A rows are straight/diagonal, T1B rows are wave
 
-                if ((tier === 0 || tier === 1) && Math.random() < 0.14) {
+                if ((tier === 0 || tier === 1) && Math.random() < 0.05) {
                     spawnRow(side, t, tier);
                     return;
                 }
@@ -4530,7 +4530,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 0));
-            }, 2400);
+            }, 5000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4562,7 +4562,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 1));
-            }, 2800);
+            }, 5000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4594,7 +4594,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 2));
-            }, 1800);
+            }, 5000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4615,7 +4615,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 3));
-            }, 2200);
+            }, 6000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4636,7 +4636,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 5));
-            }, 12000);
+            }, 25000);
 
             // ── T6C Spawn System ───────────────────────────────────────────────────
 
@@ -4681,7 +4681,7 @@
                 const ti = Math.random() < 0.5 ? 0 : 1;
 
                 spawnRow(side, ENEMY_TIERS[ti], ti);
-            }, 8000);
+            }, 16000);
 
             // Rare elite spawn — one T1A Elite (9) or T1B Elite (10) every 5s
 
@@ -4719,7 +4719,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, wave, ti));
-            }, 10000);
+            }, 20000);
 
             // 3x T1A row every 20 seconds (slow wave movement)
 
@@ -4754,7 +4754,7 @@
                     for (let i = 0; i < count; i++)
                         enemies.push(makeEnemy(baseX, -t.size - i * ROW_GAP, vx, vy, t, wave, ti));
                 }
-            }, 20000);
+            }, 30000);
 
             // Elite T2 spawn — once every 10 seconds
 
@@ -4807,7 +4807,7 @@
                 eliteT2.wavePattern = wavePattern;
 
                 enemies.push(eliteT2);
-            }, 10000);
+            }, 25000);
 
             // ── Update ────────────────────────────────────────────────────────
 

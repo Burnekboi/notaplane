@@ -1,4 +1,4 @@
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf } = require('telegraf');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
@@ -54,11 +54,8 @@ function initBot() {
         `🚀 <b>Welcome, ${name}!</b>\n\n` +
         `💰 SK Balance: <b>${balance.toLocaleString()}</b>\n\n` +
         `Blast through waves of cosmic enemies and earn rewards!\n\n` +
-        `<i>Opens in your browser for the best performance.</i>`,
-        Markup.inlineKeyboard([
-          [Markup.button.url('🎮 Play Game', makeGameUrl(user))],
-          [Markup.button.url('📊 Dashboard', makeDashUrl(user))]
-        ])
+        `<a href="${makeGameUrl(user)}">🎮 Play Game</a>  |  <a href="${makeDashUrl(user)}">📊 Dashboard</a>\n\n` +
+        `<i>⚠️ If it opens inside Telegram, tap ⋮ > Open in Browser</i>`,
       );
     } catch (err) {
       console.error('/start error:', err.message);
@@ -79,11 +76,9 @@ function initBot() {
   bot.command('play', async (ctx) => {
     let user = await User.findOne({ telegram_id: ctx.from.id });
     if (!user) return ctx.reply('Use /start first to register.');
-    ctx.reply(
-      'Launch the game below!',
-      Markup.inlineKeyboard([
-        [Markup.button.url('🎮 Play Game', makeGameUrl(user))]
-      ])
+    ctx.replyWithHTML(
+      `<a href="${makeGameUrl(user)}">🎮 Play Game</a>\n\n` +
+      `<i>⚠️ If it opens inside Telegram, tap ⋮ > Open in Browser</i>`
     );
   });
 

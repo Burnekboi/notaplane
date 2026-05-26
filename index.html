@@ -5,6 +5,40 @@
         <title>Space King Jackpot</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <script>
+            // Detect Telegram's in-app browser (not WebView) and redirect to system browser
+            (function(){
+                var ua = navigator.userAgent;
+                var inTgAppBrowser = /Telegram/i.test(ua) && !window.Telegram?.WebApp;
+                if (!inTgAppBrowser) return;
+
+                var url = window.location.href;
+
+                // Android: use intent:// to open default browser
+                if (/Android/i.test(ua)) {
+                    var intentUrl = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;end';
+                    window.location.href = intentUrl;
+                    return;
+                }
+
+                // iOS: show overlay to open in Safari
+                document.title = 'Open in Safari';
+                document.documentElement.innerHTML = '\
+<div style="display:flex;align-items:center;justify-content:center;height:100dvh;background:#0d0d1a;color:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif;text-align:center;padding:20px">\
+  <div style="max-width:360px">\
+    <h1 style="font-size:22px;margin-bottom:12px;color:#ffcc00">Open in Safari</h1>\
+    <p style="font-size:15px;color:#aaa;line-height:1.5;margin-bottom:24px">\
+      For the best performance, open this page in Safari instead of Telegram.\
+    </p>\
+    <button onclick="var u=window.location.href;navigator.clipboard.writeText(u);this.textContent=\'Copied!\';setTimeout(function(){this.textContent=\'Copy URL\'},2000)"\
+      style="width:100%;padding:14px;font-size:16px;font-weight:600;background:#ffcc00;color:#000;border:none;border-radius:10px;cursor:pointer">\
+      Copy URL\
+    </button>\
+    <p style="font-size:12px;color:#666;margin-top:12px">Copied! Open Safari and paste.</p>\
+  </div>\
+</div>';
+            })();
+        </script>
 
         <style>
             * {

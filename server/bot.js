@@ -2,9 +2,15 @@ const { Telegraf, Markup } = require('telegraf');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
-// Telegram WebApp URL — set WEBAPP_URL env var to your deployed server URL
-// (e.g. https://your-app.onrender.com). Defaults to localhost for development.
-const WEBAPP_URL = (process.env.WEBAPP_URL || 'http://localhost:3000').replace(/\/+$/, '');
+// Telegram WebApp URL
+// Priority:
+//   1. WEBAPP_URL env var (explicit override)
+//   2. RAILWAY_PUBLIC_DOMAIN (auto-set by Railway to the public URL of this service)
+//   3. localhost:3000 (local development default)
+const RAILWAY_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN.replace(/^https?:\/\//, '')}`
+  : null;
+const WEBAPP_URL = (process.env.WEBAPP_URL || RAILWAY_DOMAIN || 'http://localhost:3000').replace(/\/+$/, '');
 
 console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 

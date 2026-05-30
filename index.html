@@ -1816,6 +1816,8 @@
 
             const NUKE_FIRE_RATE = 310; // ms between missiles
 
+            let lastTouchEnd = 0; // timestamp guard to prevent touch→mouse synthesis on Android
+
             let lastNukeFire = 0;
 
             // Dragon Strike State
@@ -2471,6 +2473,11 @@
                     return;
                 }
 
+                // Skip if this is a synthesized click from a recent touch (Android)
+                if (performance.now() - lastTouchEnd < 100) {
+                    return;
+                }
+
                 if (nukeMode) {
                     isHolding = true;
 
@@ -2565,6 +2572,8 @@
                             break;
                         }
                     }
+                    lastTouchEnd = performance.now();
+                    e.preventDefault();
                     return;
                 }
 
@@ -2580,6 +2589,8 @@
                         lastNukeFire = performance.now();
                         fireNukeAt(target);
                     }
+                    lastTouchEnd = performance.now();
+                    e.preventDefault();
                     return;
                 }
 
@@ -2596,6 +2607,8 @@
                             fireDragonStrikeAt(target, lastDragonFire);
                         }
                     }
+                    lastTouchEnd = performance.now();
+                    e.preventDefault();
                     return;
                 }
 
@@ -7333,7 +7346,7 @@
                             ctx.textAlign = "center";
                             ctx.textBaseline = "middle";
                             ctx.shadowColor = "#000";
-                            ctx.shadowBlur = 6;
+                            ctx.shadowBlur = 4;
 
                             if (e.state === "dying") {
                                 const mult = e.dyingFinalMult || 1;
@@ -9575,7 +9588,7 @@
                             ballCY,
                             autoTarget.x,
                             autoTarget.y,
-                            "rgba(0,180,255,0.8)",
+                            "rgba(255,200,100,0.55)",
                             "#fff",
                         );
 
@@ -9612,7 +9625,7 @@
                         const pulse =
                             0.6 + 0.4 * Math.sin(performance.now() / 180);
 
-                        ctx.shadowColor = `rgba(100,200,255,${pulse})`;
+                        ctx.shadowColor = `rgba(255,180,80,${pulse * 0.4})`;
 
                         ctx.shadowBlur = 6;
 
@@ -9662,7 +9675,7 @@
 
                         orbGrad.addColorStop(
                             0.4,
-                            `rgba(0,255,255,${0.6 * innerPulse})`,
+                            `rgba(255,200,100,${0.5 * innerPulse})`,
                         );
 
                         orbGrad.addColorStop(1, "transparent");
@@ -9683,11 +9696,11 @@
 
                         ctx.save();
 
-                        ctx.strokeStyle = `rgba(0,220,255,${0.6 + 0.4 * innerPulse})`;
+                        ctx.strokeStyle = `rgba(255,180,80,${0.5 + 0.3 * innerPulse})`;
 
                         ctx.lineWidth = 2;
 
-                        ctx.shadowColor = "#00ffff";
+                        ctx.shadowColor = "#ffcc66";
 
                         ctx.shadowBlur = 10;
 
@@ -9740,11 +9753,11 @@
 
                                 const alpha = 0.5 + 0.5 * s(3);
 
-                                ctx.strokeStyle = `rgba(180,255,255,${alpha})`;
+                                ctx.strokeStyle = `rgba(255,220,150,${alpha})`;
 
                                 ctx.lineWidth = 1;
 
-                                ctx.shadowColor = "#00ffff";
+                                ctx.shadowColor = "#ffcc66";
 
                                 ctx.shadowBlur = 6;
 
@@ -9778,7 +9791,7 @@
 
                         ctx.save();
 
-                        ctx.fillStyle = `rgba(180,255,255,${0.5 * innerPulse})`;
+                        ctx.fillStyle = `rgba(255,220,150,${0.4 * innerPulse})`;
 
                         ctx.beginPath();
 

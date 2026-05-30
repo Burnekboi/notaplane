@@ -479,17 +479,123 @@
         <script>
             const canvas = document.getElementById("game");
 
-            const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
             const hitCanvas = document.createElement('canvas');
             hitCanvas.width = 600;
             hitCanvas.height = 600;
-            const hitCtx = hitCanvas.getContext('2d');
+            const hitCtx = hitCanvas.getContext('2d', { alpha: true, desynchronized: true });
+
+            // ── Loading screen overlay ──────────────────────────────────────────
+            // Renders immediately while Telegram WebView initializes its buffers.
+            canvas.width = 800;
+            canvas.height = 500;
+            ctx.fillStyle = "#0a3a4a";
+            ctx.fillRect(0, 0, 800, 500);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 28px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Loading...", 400, 250);
 
             let audioCtx = null;
             let bulletFireAudio = null;
             let missileFireAudio = null;
             let dragonFireAudio = null;
+
+            // ── GPU / Renderer Detection ────────────────────────────────────────
+            // Collects device GPU info + Canvas 2D benchmark to estimate
+            // whether rendering is likely GPU-accelerated or CPU-backed.
+            // Runs deferred so it doesn't block the loading screen.
+
+            let gpuInfo = null;
+
+            function detectGPU() {
+                const info = {};
+
+                // 1. GPU vendor & renderer via WebGL
+                try {
+                    const c = document.createElement('canvas');
+                    const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+                    if (gl) {
+                        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (ext) {
+                            info.vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL);
+                            info.renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+                        }
+                        info.glVendor = gl.getParameter(gl.VENDOR);
+                        info.glRenderer = gl.getParameter(gl.RENDERER);
+                        gl.getExtension('WEBGL_lose_context')?.loseContext();
+                    }
+                } catch (e) { /* WebGL not available */ }
+
+                // 2. Canvas 2D quick benchmark — 500 draw ops
+                try {
+                    const c = document.createElement('canvas');
+                    c.width = 400; c.height = 400;
+                    const bCtx = c.getContext('2d');
+                    const t0 = performance.now();
+                    for (let i = 0; i < 500; i++) {
+                        bCtx.fillStyle = `hsl(${(i * 37) % 360}, 80%, 50%)`;
+                        bCtx.fillRect((i * 13) % 380, (i * 7) % 380, 10 + (i % 20), 10 + (i % 20));
+                        bCtx.globalAlpha = 0.3 + (i % 7) * 0.1;
+                        bCtx.beginPath();
+                        bCtx.arc((i * 11) % 390, (i * 17) % 390, 8 + (i % 12), 0, Math.PI * 2);
+                        bCtx.fill();
+                        bCtx.globalAlpha = 1.0;
+                    }
+                    info.benchMs = Math.round((performance.now() - t0) * 10) / 10;
+                } catch (e) { info.benchMs = -1; }
+
+                // 3. Hardware info
+                info.cores = navigator.hardwareConcurrency || '?';
+                info.deviceMemory = navigator.deviceMemory || '?';
+
+                // 4. Determine likely backend (conservative — WebGL presence ≠ Canvas 2D acceleration)
+                let verdict = 'Unable to determine';
+                if (info.benchMs > 0 && info.benchMs < 20) {
+                    verdict = info.renderer
+                        ? 'Likely GPU-accelerated'
+                        : 'Likely GPU-accelerated (fast Canvas 2D)';
+                } else if (info.benchMs >= 20 && info.benchMs < 60) {
+                    verdict = info.renderer
+                        ? 'Likely GPU-accelerated (moderate)'
+                        : 'Canvas 2D backend uncertain — moderate speed';
+                } else if (info.benchMs >= 60) {
+                    verdict = 'Likely CPU-backed or slow GPU (benchmark: ' + info.benchMs + 'ms)';
+                }
+
+                const isLowEnd =
+                    (info.cores !== '?' && info.cores <= 2) ||
+                    (info.deviceMemory !== '?' && info.deviceMemory <= 1);
+                if (isLowEnd && info.benchMs > 0) {
+                    verdict += ' [low-end device]';
+                }
+
+                info.verdict = verdict;
+
+                // 5. Log formatted report
+                const sep = '━'.repeat(48);
+                console.log(`%c${sep}`, 'color:#888');
+                console.log('%c 🖥  GPU DETECTION REPORT', 'font-weight:bold;font-size:13px');
+                console.log(`%c${sep}`, 'color:#888');
+                console.log(`  Vendor:     ${info.vendor || info.glVendor || 'N/A'}`);
+                console.log(`  Renderer:   ${info.renderer || info.glRenderer || 'N/A'}`);
+                console.log(`  Canvas 2D:  ${info.benchMs}ms (500 ops)`);
+                console.log(`  CPU cores:  ${info.cores}`);
+                console.log(`  RAM:        ${info.deviceMemory}GB`);
+                console.log(`  Verdict:    %c${info.verdict}`, isLowEnd ? 'color:#ffaa00' : 'color:#4caf50');
+                console.log(`%c${sep}`, 'color:#888');
+
+                gpuInfo = info;
+            }
+
+            // Defer detection so the loading screen renders first
+            if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(() => detectGPU(), { timeout: 2000 });
+            } else {
+                setTimeout(detectGPU, 500);
+            }
 
             function ensureAudioContext() {
                 if (!audioCtx) {
@@ -574,10 +680,6 @@
                 rightHudBox.style.height = `${textboxH}px`;
                 rightHudBox.style.opacity = showHud ? "1" : "0";
             }
-
-            canvas.width = 800;
-
-            canvas.height = 500;
 
             const W = canvas.width,
                 H = canvas.height;
@@ -4358,7 +4460,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 0));
-            }, 1200);
+            }, 3600);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4390,7 +4492,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 1));
-            }, 1400);
+            }, 4200);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4509,7 +4611,7 @@
                 const ti = Math.random() < 0.5 ? 0 : 1;
 
                 spawnRow(side, ENEMY_TIERS[ti], ti);
-            }, 4000);
+            }, 12000);
 
             // Rare elite spawn — one T1A Elite (9) or T1B Elite (10) every 5s
 
@@ -4582,7 +4684,7 @@
                     for (let i = 0; i < count; i++)
                         enemies.push(makeEnemy(baseX, -t.size - i * ROW_GAP, vx, vy, t, wave, ti));
                 }
-            }, 10000);
+            }, 30000);
 
             // Elite T2 spawn — once every 10 seconds
 
@@ -5892,6 +5994,7 @@
 
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     const e = enemies[i];
+                    if (!e) continue; // Guard: chain-variant logic may have spliced extra enemies, shrinking the array
 
                     e.age += 0.04;
 

@@ -1,4 +1,4 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
@@ -52,8 +52,11 @@ function initBot() {
       await ctx.replyWithHTML(
         `🚀 <b>Welcome, ${name}!</b>\n\n` +
         `💰 SK Balance: <b>${balance.toLocaleString()}</b>\n\n` +
-        `Blast through waves of cosmic enemies and earn rewards!\n\n` +
-        `<a href="${makeGameUrl(user)}">🎮 Play Game</a>  |  <a href="${makeDashUrl(user)}">📊 Dashboard</a>`,
+        `Blast through waves of cosmic enemies and earn rewards!`,
+        Markup.inlineKeyboard([
+          Markup.button.webApp('🎮 Play Game', makeGameUrl(user)),
+          Markup.button.webApp('📊 Dashboard', makeDashUrl(user)),
+        ]),
       );
     } catch (err) {
       console.error('/start error:', err.message);
@@ -74,7 +77,12 @@ function initBot() {
   bot.command('play', async (ctx) => {
     let user = await User.findOne({ telegram_id: ctx.from.id });
     if (!user) return ctx.reply('Use /start first to register.');
-    ctx.replyWithHTML(`<a href="${makeGameUrl(user)}">🎮 Play Game</a>`);
+    ctx.replyWithHTML(
+      `🎮 Ready to play?`,
+      Markup.inlineKeyboard([
+        Markup.button.webApp('🎮 Play Game', makeGameUrl(user)),
+      ]),
+    );
   });
 
   bot.command('balance', async (ctx) => {

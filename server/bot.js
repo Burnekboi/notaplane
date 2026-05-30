@@ -2,10 +2,9 @@ const { Telegraf } = require('telegraf');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
-const PUBLIC_DOMAIN = process.env.WEBAPP_URL || process.env.VERCEL_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL;
-const WEBAPP_URL = PUBLIC_DOMAIN
-  ? `https://${PUBLIC_DOMAIN.replace(/^https?:\/\//, '')}`
-  : 'http://localhost:3000';
+// Telegram WebApp URL — set WEBAPP_URL env var to your deployed server URL
+// (e.g. https://your-app.onrender.com). Defaults to localhost for development.
+const WEBAPP_URL = (process.env.WEBAPP_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 
@@ -54,8 +53,7 @@ function initBot() {
         `🚀 <b>Welcome, ${name}!</b>\n\n` +
         `💰 SK Balance: <b>${balance.toLocaleString()}</b>\n\n` +
         `Blast through waves of cosmic enemies and earn rewards!\n\n` +
-        `<a href="${makeGameUrl(user)}">🎮 Play Game</a>  |  <a href="${makeDashUrl(user)}">📊 Dashboard</a>\n\n` +
-        `<i>⚠️ If it opens inside Telegram, tap ⋮ > Open in Browser</i>`,
+        `<a href="${makeGameUrl(user)}">🎮 Play Game</a>  |  <a href="${makeDashUrl(user)}">📊 Dashboard</a>`,
       );
     } catch (err) {
       console.error('/start error:', err.message);
@@ -76,10 +74,7 @@ function initBot() {
   bot.command('play', async (ctx) => {
     let user = await User.findOne({ telegram_id: ctx.from.id });
     if (!user) return ctx.reply('Use /start first to register.');
-    ctx.replyWithHTML(
-      `<a href="${makeGameUrl(user)}">🎮 Play Game</a>\n\n` +
-      `<i>⚠️ If it opens inside Telegram, tap ⋮ > Open in Browser</i>`
-    );
+    ctx.replyWithHTML(`<a href="${makeGameUrl(user)}">🎮 Play Game</a>`);
   });
 
   bot.command('balance', async (ctx) => {

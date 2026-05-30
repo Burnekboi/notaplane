@@ -38,7 +38,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${PORT}`);
 });
 
-// Immediate health check so Railway knows the app is alive
+// Health check for container platforms
 app.get('/health', (req, res) => res.send('ok'));
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
@@ -57,7 +57,7 @@ if (hasBotToken) {
     console.log('Telegram bot started');
   }).catch(err => {
     console.log('Bot launch failed:', err.message);
-    console.log('Check that BOT_TOKEN is correct in Railway dashboard.');
+    console.log('Check that BOT_TOKEN is set correctly in your environment.');
   });
 
   process.once('SIGINT', () => { bot.stop('SIGINT'); server.close(); });

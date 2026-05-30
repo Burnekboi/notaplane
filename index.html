@@ -4475,13 +4475,13 @@
                 // T1A+T1B heavy, good T2 presence
 
                 const tier =
-                    roll < 0.22
+                    roll < 0.14
                         ? 0
-                        : roll < 0.44
+                        : roll < 0.28
                           ? 1
-                          : roll < 0.63
+                          : roll < 0.42
                             ? 2
-                            : roll < 0.865
+                            : roll < 0.66
                               ? 3
                               : roll < 0.985
                                 ? 4
@@ -4804,7 +4804,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 0));
-            }, 3600);
+            }, 5000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4836,7 +4836,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 1));
-            }, 4200);
+            }, 5500);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4868,7 +4868,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 2));
-            }, 1800);
+            }, 3000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4889,7 +4889,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 3));
-            }, 2200);
+            }, 3200);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4910,7 +4910,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 5));
-            }, 12000);
+            }, 18000);
 
             // ── T6C Spawn System ───────────────────────────────────────────────────
 
@@ -4955,7 +4955,7 @@
                 const ti = Math.random() < 0.5 ? 0 : 1;
 
                 spawnRow(side, ENEMY_TIERS[ti], ti);
-            }, 12000);
+            }, 18000);
 
             // Rare elite spawn — one T1A Elite (9) or T1B Elite (10) every 5s
 

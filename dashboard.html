@@ -465,7 +465,7 @@
         </style>
         <script>
             const canvas = document.getElementById('bgCanvas');
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
             let W, H;
 
             function resize() {
@@ -474,6 +474,113 @@
             }
             window.addEventListener('resize', resize);
             resize();
+
+            // ── Loading screen overlay ──────────────────────────────────────────
+            // Renders immediately while Telegram WebView initializes its buffers.
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 28px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Space King Jackpot", W / 2, H / 2 - 30);
+            ctx.font = "16px Arial, sans-serif";
+            ctx.fillStyle = "rgba(255,255,255,0.5)";
+            ctx.fillText("Loading...", W / 2, H / 2 + 20);
+
+            // ── GPU / Renderer Detection ────────────────────────────────────────
+            // Collects device GPU info + Canvas 2D benchmark to estimate
+            // whether rendering is likely GPU-accelerated or CPU-backed.
+            // Runs deferred so it doesn't block the loading screen.
+
+            let gpuInfo = null;
+
+            function detectGPU() {
+                const info = {};
+
+                // 1. GPU vendor & renderer via WebGL
+                try {
+                    const c = document.createElement('canvas');
+                    const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+                    if (gl) {
+                        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (ext) {
+                            info.vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL);
+                            info.renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+                        }
+                        info.glVendor = gl.getParameter(gl.VENDOR);
+                        info.glRenderer = gl.getParameter(gl.RENDERER);
+                        gl.getExtension('WEBGL_lose_context')?.loseContext();
+                    }
+                } catch (e) { /* WebGL not available */ }
+
+                // 2. Canvas 2D quick benchmark — 500 draw ops
+                try {
+                    const c = document.createElement('canvas');
+                    c.width = 400; c.height = 400;
+                    const bCtx = c.getContext('2d');
+                    const t0 = performance.now();
+                    for (let i = 0; i < 500; i++) {
+                        bCtx.fillStyle = `hsl(${(i * 37) % 360}, 80%, 50%)`;
+                        bCtx.fillRect((i * 13) % 380, (i * 7) % 380, 10 + (i % 20), 10 + (i % 20));
+                        bCtx.globalAlpha = 0.3 + (i % 7) * 0.1;
+                        bCtx.beginPath();
+                        bCtx.arc((i * 11) % 390, (i * 17) % 390, 8 + (i % 12), 0, Math.PI * 2);
+                        bCtx.fill();
+                        bCtx.globalAlpha = 1.0;
+                    }
+                    info.benchMs = Math.round((performance.now() - t0) * 10) / 10;
+                } catch (e) { info.benchMs = -1; }
+
+                // 3. Hardware info
+                info.cores = navigator.hardwareConcurrency || '?';
+                info.deviceMemory = navigator.deviceMemory || '?';
+
+                // 4. Determine likely backend (conservative — WebGL presence ≠ Canvas 2D acceleration)
+                let verdict = 'Unable to determine';
+                if (info.benchMs > 0 && info.benchMs < 20) {
+                    verdict = info.renderer
+                        ? 'Likely GPU-accelerated'
+                        : 'Likely GPU-accelerated (fast Canvas 2D)';
+                } else if (info.benchMs >= 20 && info.benchMs < 60) {
+                    verdict = info.renderer
+                        ? 'Likely GPU-accelerated (moderate)'
+                        : 'Canvas 2D backend uncertain — moderate speed';
+                } else if (info.benchMs >= 60) {
+                    verdict = 'Likely CPU-backed or slow GPU (benchmark: ' + info.benchMs + 'ms)';
+                }
+
+                const isLowEnd =
+                    (info.cores !== '?' && info.cores <= 2) ||
+                    (info.deviceMemory !== '?' && info.deviceMemory <= 1);
+                if (isLowEnd && info.benchMs > 0) {
+                    verdict += ' [low-end device]';
+                }
+
+                info.verdict = verdict;
+
+                // 5. Log formatted report
+                const sep = '\u2501'.repeat(48);
+                console.log(`%c${sep}`, 'color:#888');
+                console.log('%c \uD83D\uDDA5  GPU DETECTION REPORT', 'font-weight:bold;font-size:13px');
+                console.log(`%c${sep}`, 'color:#888');
+                console.log(`  Vendor:     ${info.vendor || info.glVendor || 'N/A'}`);
+                console.log(`  Renderer:   ${info.renderer || info.glRenderer || 'N/A'}`);
+                console.log(`  Canvas 2D:  ${info.benchMs}ms (500 ops)`);
+                console.log(`  CPU cores:  ${info.cores}`);
+                console.log(`  RAM:        ${info.deviceMemory}GB`);
+                console.log(`  Verdict:    %c${info.verdict}`, isLowEnd ? 'color:#ffaa00' : 'color:#4caf50');
+                console.log(`%c${sep}`, 'color:#888');
+
+                gpuInfo = info;
+            }
+
+            // Defer detection so the loading screen renders first
+            if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(() => detectGPU(), { timeout: 2000 });
+            } else {
+                setTimeout(detectGPU, 500);
+            }
 
             const STAR_COUNT = 250;
             const stars = [];

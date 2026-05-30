@@ -420,6 +420,57 @@
 
                 text-shadow: 0 0 4px #ff8800;
             }
+            /* ── Landscape Orientation Overlay ────────────────────────── */
+            #orientationOverlay {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                background: #0a0a0a;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 24px;
+                user-select: none;
+                -webkit-user-select: none;
+            }
+            #orientationOverlay.active {
+                display: flex;
+            }
+            #orientationOverlay .rotate-icon {
+                width: 88px;
+                height: 88px;
+                border: 3px solid rgba(255,255,255,0.2);
+                border-radius: 18px;
+                position: relative;
+                animation: rotateHint 2.4s ease-in-out infinite;
+            }
+            #orientationOverlay .rotate-icon::after {
+                content: '↻';
+                font-size: 52px;
+                color: rgba(255,255,255,0.6);
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+            @keyframes rotateHint {
+                0%   { transform: rotate(0deg); }
+                40%  { transform: rotate(90deg); }
+                60%  { transform: rotate(90deg); }
+                100% { transform: rotate(0deg); }
+            }
+            #orientationOverlay .rotate-text {
+                color: #fff;
+                font: bold 22px Arial, sans-serif;
+                text-align: center;
+                line-height: 1.5;
+            }
+            #orientationOverlay .rotate-sub {
+                color: rgba(255,255,255,0.4);
+                font: 14px Arial, sans-serif;
+                text-align: center;
+            }
         </style>
     </head>
 
@@ -467,6 +518,13 @@
 
                     <span>×7</span>
                 </div>
+            </div>
+
+            <!-- ── Landscape Orientation Overlay ── -->
+            <div id="orientationOverlay">
+                <div class="rotate-icon"></div>
+                <div class="rotate-text">Please rotate your device<br>to landscape mode</div>
+                <div class="rotate-sub">Landscape mode is required to play</div>
             </div>
         </div>
 
@@ -9871,14 +9929,59 @@
                         document.getElementById('missileBtn').style.display = '';
                         document.getElementById('dragonBtn').style.display = '';
                     }
-                } else {
+                } else if (isLandscape) {
                     update(ts);
                 }
 
-                draw();
+                if (isLandscape) {
+                    draw();
+                }
 
                 requestAnimationFrame(loop);
             }
+
+// ── Landscape Orientation System ────────────────────────────────────────
+// Detects device orientation and pauses gameplay when in portrait mode.
+// Works on Android, iOS, tablets, and Telegram WebApp.
+
+const orientationOverlay = document.getElementById('orientationOverlay');
+let isLandscape = true;
+
+function checkOrientation() {
+    isLandscape = window.innerWidth >= window.innerHeight;
+    orientationOverlay.classList.toggle('active', !isLandscape);
+}
+
+function lockLandscape() {
+    if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {
+            // Fallback: overlay handles the rotation hint
+        });
+    }
+}
+
+// Initial check (done after the loading screen)
+checkOrientation();
+// Attempt to lock orientation (gracefully fails if not permitted)
+lockLandscape();
+
+// Listen for device orientation changes
+window.addEventListener('orientationchange', () => {
+    setTimeout(checkOrientation, 150);
+    setTimeout(lockLandscape, 300);
+});
+
+// Listen for resize (covers desktop and some mobile scenarios)
+window.addEventListener('resize', () => {
+    checkOrientation();
+});
+
+// Telegram WebApp viewport changes
+if (window.Telegram && window.Telegram.WebApp) {
+    window.Telegram.WebApp.onEvent('viewportChanged', () => {
+        checkOrientation();
+    });
+}
 
             requestAnimationFrame(loop);
         </script>

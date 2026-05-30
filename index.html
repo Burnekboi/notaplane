@@ -3,6 +3,8 @@
 <html>
     <head>
         <title>Shooter Prototype</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
         <style>
             * {
@@ -14,134 +16,35 @@
             }
 
             body {
-                background: #111;
-
+                background: #000;
                 display: flex;
-
                 flex-direction: column;
-
                 justify-content: center;
-
                 align-items: center;
-
                 height: 100vh;
-
+                margin: 0;
+                padding: 0;
                 overflow: hidden;
-
-                gap: 10px;
             }
 
             canvas {
                 background: #0a3a4a;
-
                 box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-
                 cursor: crosshair;
-            }
-
-            #ui {
-                display: flex;
-
-                align-items: center;
-
-                gap: 12px;
-            }
-
-            #hudOverlay {
-                position: absolute;
-                inset: 0;
-                pointer-events: none;
-            }
-
-            #leftHudBox,
-            #rightHudBox {
-                position: absolute;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                pointer-events: none;
-            }
-
-            /* AUTO toggle button */
-
-            #autoBtn {
-                padding: 0;
-                border: 0;
-                background: transparent;
-                color: rgba(255, 230, 150, 0.78);
-                font: bold 20px 'Impact', 'Arial Black', sans-serif;
-                letter-spacing: 1.2px;
-                cursor: pointer;
-                transition: all 0.15s;
-                pointer-events: auto;
-                text-shadow:
-                    0 0 4px rgba(0, 0, 0, 0.95),
-                    0 0 8px rgba(255, 160, 60, 0.35);
-            }
-
-            #autoBtn.active {
-                color: #ffffff;
-                text-shadow:
-                    0 0 6px rgba(0, 0, 0, 1.0),
-                    0 0 12px rgba(255, 220, 100, 1.0),
-                    0 0 20px rgba(255, 180, 60, 0.8),
-                    0 0 30px rgba(255, 120, 30, 0.5);
-                transform: scale(1.05);
-            }
-
-            #autoBtn:hover {
-                color: #fff3bf;
-            }
-
-
-            #balanceDisplay {
-                color: #ffff00;
-                font: bold 16px Arial;
-                min-width: 0;
-                text-align: center;
-                text-shadow:
-                    0 0 4px rgba(0, 0, 0, 0.95),
-                    0 0 8px rgba(255, 220, 0, 0.45);
-            }
-
-            #rtpDisplay {
-                color: rgba(255, 255, 255, 0.4);
-
-                font: 12px Arial;
-            }
-
-            #betIndicator {
-                position: absolute;
-                top: 469px;
-                left: calc(50% - 40px);
-                width: 80px;
-                height: 30px;
-                background-image: url('assets/bet indicator.png');
-                background-size: cover;
-                background-repeat: no-repeat;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                pointer-events: auto;
-            }
-
-            #betDisplay {
-                color: #ffffff;
-                font: bold 16px Impact, sans-serif;
-                text-shadow: 0 0 4px #000, 0 0 8px #ffaa00;
-                pointer-events: none;
-                padding-top: 13px;
+                width: 100%;
+                height: 100%;
+                display: block;
             }
 
             /* Canvas wrapper for absolute positioning of overlay buttons */
 
             #gameWrap {
                 position: relative;
-
-                display: inline-block;
-
+                width: 800px;
+                height: 500px;
+                flex-shrink: 0;
                 line-height: 0;
+                transform-origin: center center;
             }
 
             #backBtn {
@@ -8666,26 +8569,7 @@
                         ctx.lineCap = "butt";
                     }
 
-                    if (e.hp < e.maxHp) {
-                        const bx = e.x - r,
-                            by = e.y - r - 10;
 
-                        ctx.fillStyle = "#333";
-                        ctx.fillRect(bx, by, e.size, 5);
-
-                        ctx.fillStyle =
-                            e.tierIndex === 6
-                                ? "#cc2200"
-                                : e.tierIndex === 5
-                                  ? "#cc00ff"
-                                  : e.tierIndex === 7
-                                    ? "#00ff88"
-                                    : e.tierIndex === 15
-                                      ? "#ff6600"
-                                      : "#2ed573";
-
-                        ctx.fillRect(bx, by, e.size * (e.hp / e.maxHp), 5);
-                    }
                 });
 
                 // Thunder FX
@@ -10237,48 +10121,72 @@
                 requestAnimationFrame(loop);
             }
 
-// ── Landscape Orientation System ────────────────────────────────────────
-// Detects device orientation and pauses gameplay when in portrait mode.
-// Works on Android, iOS, tablets, and Telegram WebApp.
+// ── Landscape Orientation & Resizing System ──────────────────────────────────────────
+// Detects device orientation, scales the game to fit, and handles Telegram WebApp integration.
 
 const orientationOverlay = document.getElementById('orientationOverlay');
+const gameWrap = document.getElementById('gameWrap');
 let isLandscape = true;
+
+function resizeGame() {
+    const windowW = window.innerWidth;
+    const windowH = window.innerHeight;
+    const gameW = 800;
+    const gameH = 500;
+
+    // Calculate scale factor to fit the game in the viewport
+    const scale = Math.min(windowW / gameW, windowH / gameH);
+    
+    if (gameWrap) {
+        gameWrap.style.transform = `scale(${scale})`;
+    }
+}
 
 function checkOrientation() {
     isLandscape = window.innerWidth >= window.innerHeight;
-    orientationOverlay.classList.toggle('active', !isLandscape);
+    
+    if (orientationOverlay) {
+        orientationOverlay.classList.toggle('active', !isLandscape);
+    }
+    
+    if (isLandscape) {
+        resizeGame();
+    }
 }
 
 function lockLandscape() {
     if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {
-            // Fallback: overlay handles the rotation hint
+            // Fallback: overlay handles the rotation hint via orientationOverlay
         });
     }
 }
 
-// Initial check (done after the loading screen)
+// Telegram WebApp Initialization
+if (window.Telegram && window.Telegram.WebApp) {
+    const twa = window.Telegram.WebApp;
+    twa.ready();
+    twa.expand();
+    
+    // Some devices don't trigger 'resize' when the Telegram header/footer changes
+    twa.onEvent('viewportChanged', () => {
+        checkOrientation();
+    });
+}
+
+// Initial check
 checkOrientation();
 // Attempt to lock orientation (gracefully fails if not permitted)
 lockLandscape();
 
 // Listen for device orientation changes
 window.addEventListener('orientationchange', () => {
-    setTimeout(checkOrientation, 150);
-    setTimeout(lockLandscape, 300);
+    setTimeout(checkOrientation, 200);
+    setTimeout(lockLandscape, 400);
 });
 
-// Listen for resize (covers desktop and some mobile scenarios)
-window.addEventListener('resize', () => {
-    checkOrientation();
-});
-
-// Telegram WebApp viewport changes
-if (window.Telegram && window.Telegram.WebApp) {
-    window.Telegram.WebApp.onEvent('viewportChanged', () => {
-        checkOrientation();
-    });
-}
+// Listen for resize (covers desktop and mobile viewport changes)
+window.addEventListener('resize', checkOrientation);
 
             // Wait for assets to finish loading before starting the game loop
             function tryStartLoop() {

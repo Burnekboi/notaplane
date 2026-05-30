@@ -94,7 +94,6 @@
             }
 
 
-
             #balanceDisplay {
                 color: #ffff00;
                 font: bold 16px Arial;
@@ -1278,10 +1277,13 @@
             let stars = initStars();
 
             const smokeFX = [];
+            const MAX_SMOKE_FX = 100;
 
             const lightningSparks = [];
+            const MAX_LIGHTNING_SPARKS = 200;
 
             const activeTitles = []; // { type: 'T6'|'T6B'|'T6C', startTime, duration }
+            const MAX_ACTIVE_TITLES = 10;
 
             function showTitle(type, playerIdx = ACTIVE_PLAYER_INDEX, enemyRef = null) {
                 const durations = { T6: Infinity, T6B: Infinity, T6C: 3000, NT1: Infinity, D1: 3000, D2: 3000, D3: Infinity, D4: Infinity };
@@ -1289,10 +1291,13 @@
             }
 
             const popups = []; // { x, y, text, subText, startTime, duration, scale, alpha }
+            const MAX_POPUPS = 20;
 
             const baseRewardPopups = []; // { text, startTime, duration }
+            const MAX_BASE_REWARD_POPUPS = 10;
 
             const pendingRewards = []; // { amount, readyAt }
+            const MAX_PENDING_REWARDS = 20;
 
             function scheduleBaseReward(amount, delayMs) {
                 if (amount > 0) {
@@ -1403,6 +1408,7 @@
             const EXPLOSION_FRAMES = 18; // Total frames
 
             const explosionAnimations = []; // { x, y, frameIndex, startTime, rotation, tierIndex, size }
+            const MAX_EXPLOSION_ANIMS = 20;
 
             // Enemy tiers that should display explosion animation on death
             const EXPLOSION_TIERS = new Set([0, 1, 2, 3, 4, 5, 6, 9, 12, 15]); // T1A, T1B, T2, T3, T4, T5, T6, Elite T1A, Elite T2, T6C
@@ -1441,7 +1447,8 @@
 
                     const speed = 2 + rng.next() * 6;
 
-                    lightningSparks.push({
+                                        if (lightningSparks.length < MAX_LIGHTNING_SPARKS) {
+                        lightningSparks.push({
                         x,
                         y,
 
@@ -1455,6 +1462,7 @@
 
                         color: rng.next() > 0.5 ? "#ff9f43" : "#ffeb3b", // Orange/Yellow sparks
                     });
+                    }
                 }
             }
 
@@ -1639,7 +1647,7 @@
                     enemies.splice(i, 1);
                 }
 
-                explosionFX.push({ x, y, alpha: 1.0, radius });
+                if (explosionFX.length < MAX_EXPLOSION_FX) { explosionFX.push({ x, y, alpha: 1.0, radius }); }
             }
 
             function triggerMissileLaunch() {
@@ -2343,7 +2351,6 @@
                     clearInterval(burstInterval);
                 }
             });
-
 
 
             // Bet indicator DOM
@@ -3107,6 +3114,7 @@
             //    5% → ×151–×180
 
             const explosionFX = [];
+            const MAX_EXPLOSION_FX = 30;
 
             const d2DeathAnims = []; // { x, y, startTime, done }
 
@@ -3137,7 +3145,9 @@
                     enemies.splice(i, 1); // kill the enemy (no reward collected)
                 }
 
+                if (explosionFX.length < MAX_EXPLOSION_FX) {
                 explosionFX.push({ x, y, alpha: 1.0, radius });
+                }
 
                 // Add shockwave animation for this explosion
                 if (!window.d2Shockwaves) window.d2Shockwaves = [];
@@ -3844,12 +3854,14 @@
                             scheduleBaseReward(d4.d4Reward, 1500);
                         }
 
+                        if (explosionFX.length < MAX_EXPLOSION_FX) {
                         explosionFX.push({
                             x: d4.x,
                             y: d4.y,
                             alpha: 1.0,
                             radius: 95,
                         });
+                        }
                         
                         chainLightningFX.push({
                             x: d4.x,
@@ -5540,6 +5552,7 @@
                                 const zoomScale =
                                     z === 0 ? 1.5 : z === 1 ? 1.2 : 0.8;
 
+                                if (explosionFX.length < MAX_EXPLOSION_FX) {
                                 explosionFX.push({
                                     x: m.target.x,
 
@@ -5549,6 +5562,7 @@
 
                                     radius: 30 * zoomScale,
                                 });
+                                }
                             }, z * 100);
                         }
 
@@ -5678,12 +5692,14 @@
                             hitTarget.hp -= finalDmg;
                         }
 
+                        if (explosionFX.length < MAX_EXPLOSION_FX) {
                         explosionFX.push({
                             x: hitTarget.x,
                             y: hitTarget.y,
                             alpha: 1.0,
                             radius: 40,
                         });
+                        }
 
                         if (nukeLanded && hitTarget.hp <= 0) {
                             if (
@@ -7306,7 +7322,7 @@
                             // Glow effect on band transition
                             if (extraGlow > 0) {
                                 ctx.shadowColor = "#00ffff";
-                                ctx.shadowBlur = 30 + extraGlow * 20;
+                                ctx.shadowBlur = 18 + extraGlow * 8;
                             }
 
                             ctx.drawImage(t6bImg,
@@ -7672,7 +7688,7 @@
 
                                 // Glow effect on fast frames
                                 ctx.shadowColor = "#ff8800";
-                                ctx.shadowBlur = 20 + 10 * Math.sin(now * 0.01);
+                                ctx.shadowBlur = 12 + 6 * Math.sin(now * 0.01);
                             }
 
                             ctx.drawImage(t6cImg,
@@ -7818,7 +7834,7 @@
                             // Pulsing shadow glow during ability (bouncing)
                             if (e.state === "bouncing") {
                                 ctx.shadowColor = "rgba(192, 192, 192, 0.5)";
-                                ctx.shadowBlur = 20 + 10 * Math.sin(now / 200);
+                                ctx.shadowBlur = 12 + 6 * Math.sin(now / 200);
                             }
 
                             // Draw sprite
@@ -7978,7 +7994,7 @@
 
                             ctx.fillStyle = gd;
                             ctx.shadowColor = "#00d4ff";
-                            ctx.shadowBlur = 24;
+                            ctx.shadowBlur = 14;
 
                             ctx.beginPath();
                             ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
@@ -8738,7 +8754,7 @@
                     ctx.lineWidth = 3;
 
                     ctx.shadowColor = "#ff00ff";
-                    ctx.shadowBlur = 16;
+                    ctx.shadowBlur = 10;
 
                     ctx.beginPath();
 
@@ -9228,7 +9244,6 @@
                     ctx.restore();
                     ctx.restore();
                 }
-
 
 
                 if (dragonMode && dragonBaseOk) {
@@ -10083,7 +10098,7 @@
             let lastLoopTs = 0;
 
             function loop(ts) {
-                const dt = ts - lastLoopTs;
+                const dt = Math.min(ts - lastLoopTs, 50);
 
                 lastLoopTs = ts;
 
@@ -10159,7 +10174,7 @@
                         document.getElementById('missileBtn').style.display = '';
                         document.getElementById('dragonBtn').style.display = '';
                     }
-                } else if (isLandscape) {
+                } else if (isLandscape && !document.hidden) {
                     update(ts);
                 }
 

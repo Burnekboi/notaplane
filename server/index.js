@@ -12,8 +12,19 @@ const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-// Serve static files (game assets + HTML)
-app.use(express.static(path.join(__dirname, '..')));
+// ── Explicit route handlers (defined BEFORE static middleware) ───────────────
+// These must come before express.static to guarantee they are handled directly,
+// not intercepted by the static file middleware on platforms like Railway.
+
+// Root — serve game
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
+// Dashboard
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'dashboard.html'));
+});
 
 // API routes
 app.use('/api/auth', require('./routes/auth'));
@@ -25,13 +36,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// Root route — explicitly serve index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'index.html'));
-});
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'dashboard.html'));
-});
+// Serve static files (game assets + HTML) — AFTER explicit routes
+app.use(express.static(path.join(__dirname, '..')));
 
 // Start HTTP server immediately (game files load right away)
 const server = app.listen(PORT, '0.0.0.0', () => {

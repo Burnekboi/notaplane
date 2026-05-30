@@ -4466,6 +4466,8 @@
 
             function spawnEnemy() {
                 if (gamePhase !== 'playing' || spawningPaused) return;
+                // Skip ~25% of spawn calls to reduce overall density
+                if (Math.random() < 0.25) return;
                 const side = Math.floor(Math.random() * 3);
 
                 const roll = Math.random();
@@ -4475,15 +4477,15 @@
                 // T1A+T1B heavy, good T2 presence
 
                 const tier =
-                    roll < 0.14
+                    roll < 0.10
                         ? 0
-                        : roll < 0.28
+                        : roll < 0.20
                           ? 1
                           : roll < 0.42
                             ? 2
-                            : roll < 0.66
+                            : roll < 0.60
                               ? 3
-                              : roll < 0.985
+                              : roll < 0.90
                                 ? 4
                                 : 5;
 
@@ -4491,7 +4493,7 @@
 
                 // T1A rows are straight/diagonal, T1B rows are wave
 
-                if ((tier === 0 || tier === 1) && Math.random() < 0.28) {
+                if ((tier === 0 || tier === 1) && Math.random() < 0.20) {
                     spawnRow(side, t, tier);
                     return;
                 }
@@ -4804,7 +4806,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 0));
-            }, 5000);
+            }, 8000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4836,7 +4838,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 1));
-            }, 5500);
+            }, 8000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4868,7 +4870,7 @@
                 }
 
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 2));
-            }, 3000);
+            }, 5000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4889,7 +4891,7 @@
                     vx = (Math.random() - 0.5) * drift; vy = speed;
                 }
                 enemies.push(makeEnemy(x, y, vx, vy, t, false, 3));
-            }, 3200);
+            }, 5000);
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
@@ -4950,6 +4952,8 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
+                // Skip ~25% of spawn calls to reduce overall density
+                if (Math.random() < 0.25) return;
                 const side = Math.floor(Math.random() * 3);
 
                 const ti = Math.random() < 0.5 ? 0 : 1;

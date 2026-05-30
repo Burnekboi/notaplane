@@ -700,10 +700,8 @@
 
         </script>
         <script>
-            const RAILWAY_HOST = 'notaplane.up.railway.app';
-            const API_BASE = window.location.origin.includes(RAILWAY_HOST)
-              ? window.location.origin
-              : 'https://' + RAILWAY_HOST;
+            // API is served from the same origin (Telegram WebApp / Express server)
+            const API_BASE = window.location.origin;
 
             // Check for auth token in URL query parameter (for external browser)
             const urlParams = new URLSearchParams(window.location.search);

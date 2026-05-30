@@ -1521,8 +1521,6 @@
                 ctx.save();
                 ctx.lineCap = "round";
                 ctx.lineJoin = "round";
-                ctx.globalCompositeOperation = "lighter";
-
                 // Faster Glow implementation (no hardware-heavy shadowBlur)
                 
                 // 1. Wide outer glow
@@ -2616,7 +2614,7 @@
                 mouseX = p.x;
                 mouseY = p.y;
 
-                if (nukeMode && isHolding) {
+                if (!autoMode && nukeMode && isHolding) {
                     const hovering = enemies.some(
                         (en) =>
                             isTargetable(en) &&
@@ -9648,8 +9646,6 @@
 
                         ctx.save();
 
-                        ctx.globalCompositeOperation = "lighter";
-
                         const orbGrad = ctx.createRadialGradient(
                             ballCX,
                             ballCY,
@@ -9673,9 +9669,7 @@
 
                         ctx.fillStyle = orbGrad;
 
-                        ctx.shadowColor = "#00ffff";
-
-                        ctx.shadowBlur = 12;
+                        // shadow removed - was causing blue flash
 
                         ctx.beginPath();
 

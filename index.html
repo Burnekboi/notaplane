@@ -2529,6 +2529,128 @@
                 clearInterval(burstInterval);
             });
 
+            // ── Touch event handlers (mobile support) ───────────────────────────
+
+            function getTouchPos(e) {
+                if (!e.touches || e.touches.length === 0) return null;
+                const r = canvas.getBoundingClientRect();
+                const t = e.touches[0];
+                return {
+                    x: (t.clientX - r.left) * (W / r.width),
+                    y: (t.clientY - r.top) * (H / r.height),
+                };
+            }
+
+            canvas.addEventListener("touchstart", (e) => {
+                if (gamePhase !== 'playing' || spawningPaused) return;
+                const p = getTouchPos(e);
+                if (!p) return;
+                mouseX = p.x;
+                mouseY = p.y;
+
+                // Safety: Clear any existing burst interval before starting a new one
+                if (burstInterval) clearInterval(burstInterval);
+
+                if (autoMode) {
+                    for (const en of enemies) {
+                        if (
+                            Math.hypot(p.x - en.x, p.y - en.y) <
+                            en.size / 2 + 6
+                        ) {
+                            autoTierIndex =
+                                en.tierIndex === 9
+                                    ? 0
+                                    : en.tierIndex === 10
+                                      ? 1
+                                      : en.tierIndex;
+                            autoTarget = en;
+                            break;
+                        }
+                    }
+                    return;
+                }
+
+                if (nukeMode) {
+                    isHolding = true;
+                    const target = enemies.find(
+                        (en) =>
+                            isTargetable(en) &&
+                            Math.hypot(p.x - en.x, p.y - en.y) <
+                            en.size / 2 + 6,
+                    );
+                    if (target) {
+                        lastNukeFire = performance.now();
+                        fireNukeAt(target);
+                    }
+                    return;
+                }
+
+                if (dragonMode) {
+                    const target = enemies.find(
+                        (en) =>
+                            Math.hypot(p.x - en.x, p.y - en.y) <
+                            en.size / 2 + 6,
+                    );
+                    if (target) {
+                        const now = performance.now();
+                        if (now - lastDragonFire > DRAGON_FIRE_RATE) {
+                            lastDragonFire = now;
+                            fireDragonStrikeAt(target, lastDragonFire);
+                        }
+                    }
+                    return;
+                }
+
+                // Normal bullet fire: start holding
+                isHolding = true;
+                fireBullet();
+                burstInterval = setInterval(fireBullet, BURST_RATE);
+
+                // Prevent default to avoid scrolling / context menu while holding
+                e.preventDefault();
+            }, { passive: false });
+
+            canvas.addEventListener("touchmove", (e) => {
+                const p = getTouchPos(e);
+                if (!p) return;
+                mouseX = p.x;
+                mouseY = p.y;
+
+                if (nukeMode && isHolding) {
+                    const hovering = enemies.some(
+                        (en) =>
+                            isTargetable(en) &&
+                            Math.hypot(p.x - en.x, p.y - en.y) <
+                            en.size / 2 + 6,
+                    );
+                    if (hovering) {
+                        const now = performance.now();
+                        if (now - lastNukeFire > NUKE_FIRE_RATE) {
+                            lastNukeFire = now;
+                            const target = enemies.find(
+                                (en) =>
+                                    isTargetable(en) &&
+                                    Math.hypot(p.x - en.x, p.y - en.y) <
+                                    en.size / 2 + 6,
+                            );
+                            if (target) fireNukeAt(target);
+                        }
+                    }
+                }
+
+                e.preventDefault();
+            }, { passive: false });
+
+            canvas.addEventListener("touchend", () => {
+                isHolding = false;
+                clearInterval(burstInterval);
+            });
+
+            canvas.addEventListener("touchcancel", () => {
+                isHolding = false;
+                clearInterval(burstInterval);
+            });
+
             function fireBullet() {
                 if (playerAttackLocked) return; // Lock attacks during D3 death sequence
 

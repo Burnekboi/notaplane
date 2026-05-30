@@ -9581,74 +9581,7 @@
                             "#fff",
                         );
 
-                        // Glowing impact flare
-
-                        ctx.save();
-
-                        ctx.globalCompositeOperation = "lighter";
-
-                        const hitGrad = ctx.createRadialGradient(
-                            autoTarget.x,
-                            autoTarget.y,
-                            0,
-                            autoTarget.x,
-                            autoTarget.y,
-                            15,
-                        );
-
-                        hitGrad.addColorStop(0, "#fff");
-
-                        hitGrad.addColorStop(0.5, "rgba(0,255,255,0.5)");
-
-                        hitGrad.addColorStop(1, "transparent");
-
-                        ctx.fillStyle = hitGrad;
-
-                        ctx.beginPath();
-                        ctx.arc(autoTarget.x, autoTarget.y, 15, 0, Math.PI * 2);
-                        ctx.fill();
-
-                        ctx.restore();
                     }
-
-                    // 2. GLOWING BASE — Pulsing flare at the ball center
-
-                    ctx.save();
-
-                    ctx.globalCompositeOperation = "lighter";
-
-                    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 80);
-
-                    const baseGrad = ctx.createRadialGradient(
-                        ballCX,
-                        ballCY,
-                        0,
-                        ballCX,
-                        ballCY,
-                        35,
-                    );
-
-                    baseGrad.addColorStop(0, "#fff");
-
-                    baseGrad.addColorStop(
-                        0.2,
-                        `rgba(0,255,255,${0.8 * pulse})`,
-                    );
-
-                    baseGrad.addColorStop(
-                        0.5,
-                        `rgba(0,100,255,${0.4 * pulse})`,
-                    );
-
-                    baseGrad.addColorStop(1, "transparent");
-
-                    ctx.fillStyle = baseGrad;
-
-                    ctx.beginPath();
-                    ctx.arc(ballCX, ballCY, 35, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.restore();
 
                     // 3. LIGHTNING BALL — drawn on top of the beam base
 

@@ -7026,8 +7026,7 @@
                             ctx.drawImage(d2Img, sx, sy, sw, sh, -dw/2, -dh/2, dw, dh);
 
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(dw);
-                                hitCanvas.height = Math.ceil(dh);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(d2Img, sx, sy, sw, sh, 0, 0, dw, dh);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -7168,8 +7167,7 @@
                             ctx.drawImage(d1Img, col * fw, row * fh, fw, fh, -size / 2, -size / 2, size, size);
 
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(size);
-                                hitCanvas.height = Math.ceil(size);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(d1Img, col * fw, row * fh, fw, fh, 0, 0, size, size);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -7271,8 +7269,7 @@
 
                             // Red hit flash overlay
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(drawW);
-                                hitCanvas.height = Math.ceil(drawH);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t6bImg,
                                     crop.sx + T6B_FW * col,
                                     crop.sy + T6B_FH * row,
@@ -7413,8 +7410,7 @@
                             ctx.drawImage(t6Img, srcX, srcY, T6_FW, T6_FH, -dw/2, -dh/2, dw, dh);
 
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(dw);
-                                hitCanvas.height = Math.ceil(dh);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t6Img, srcX, srcY, T6_FW, T6_FH, 0, 0, dw, dh);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -7524,8 +7520,7 @@
                             ctx.drawImage(t5Img, srcX, srcY, T5_FW, T5_FH, -dw/2, -dh/2, dw, dh);
 
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(dw);
-                                hitCanvas.height = Math.ceil(dh);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t5Img, srcX, srcY, T5_FW, T5_FH, 0, 0, dw, dh);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -7635,8 +7630,7 @@
 
                             // Red hit flash overlay
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(drawW);
-                                hitCanvas.height = Math.ceil(drawH);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t6cImg,
                                     crop.sx + T6C_FW * col,
                                     crop.sy + T6C_FH * row,
@@ -7775,8 +7769,7 @@
 
                             // Apply red flash hit effect (sprite-alpha masked)
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(dw);
-                                hitCanvas.height = Math.ceil(dh);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(d3Img, sx, sy, fw, fh, 0, 0, dw, dh);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -7879,8 +7872,7 @@
 
                             // Apply red flash hit effect (sprite-alpha masked)
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(dw);
-                                hitCanvas.height = Math.ceil(dh);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(d4Img, sx, sy, fw, fh, 0, 0, dw, dh);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -8004,8 +7996,7 @@
 
                             // Red flash overlay on hit (keeps existing hit feedback behavior)
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(size);
-                                hitCanvas.height = Math.ceil(size);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t1aImg, 0, 0, size, size);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -8100,8 +8091,7 @@
                             }
 
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(size);
-                                hitCanvas.height = Math.ceil(size);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t1bImg, col * fw, row * fh, fw, fh, 0, 0, size, size);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -8193,8 +8183,7 @@
                             ctx.drawImage(t3Img, -dw / 2, -dh / 2, dw, dh);
 
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(dw);
-                                hitCanvas.height = Math.ceil(dh);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t3Img, 0, 0, dw, dh);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -8328,8 +8317,7 @@
                             ctx.drawImage(t4Img, srcX, srcY, FW, FH, -drawW / 2, -drawH / 2, drawW, drawH);
 
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(drawW);
-                                hitCanvas.height = Math.ceil(drawH);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t4Img, srcX, srcY, FW, FH, 0, 0, drawW, drawH);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;
@@ -8468,8 +8456,7 @@
 
                             // Hit flash
                             if (e.hitEffect > 0) {
-                                hitCanvas.width = Math.ceil(dw);
-                                hitCanvas.height = Math.ceil(dh);
+                                hitCtx.clearRect(0, 0, 600, 600);
                                 hitCtx.drawImage(t2Img, 0, 0, dw, dh);
                                 hitCtx.globalCompositeOperation = "source-atop";
                                 hitCtx.fillStyle = `rgba(255,0,0,${e.hitEffect * 0.55})`;

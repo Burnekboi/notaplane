@@ -508,6 +508,17 @@
             hitCanvas.height = 600;
             const hitCtx = hitCanvas.getContext('2d', { alpha: true, desynchronized: true });
 
+            // ── Object pool helpers (reduce GC pressure) ─────────────────────────
+            // Reuses inactive objects instead of splice+push churn.
+            function poolNext(arr) {
+                for (let i = 0; i < arr.length; i++) {
+                    if (!arr[i].active) return arr[i];
+                }
+                const obj = {};
+                arr.push(obj);
+                return obj;
+            }
+
             // ── Loading screen overlay ──────────────────────────────────────────
             // Canvas setup for game rendering (loading shown via DOM overlay)
             canvas.width = 800;
@@ -1354,20 +1365,15 @@
                     const speed = 2 + rng.next() * 6;
 
                                         if (lightningSparks.length < MAX_LIGHTNING_SPARKS) {
-                        lightningSparks.push({
-                        x,
-                        y,
-
-                        vx: Math.cos(angle) * speed,
-
-                        vy: Math.sin(angle) * speed,
-
-                        alpha: 1.0,
-
-                        size: 2 + rng.next() * 4,
-
-                        color: rng.next() > 0.5 ? "#ff9f43" : "#ffeb3b", // Orange/Yellow sparks
-                    });
+                        const p = poolNext(lightningSparks);
+                        p.active = true;
+                        p.x = x;
+                        p.y = y;
+                        p.vx = Math.cos(angle) * speed;
+                        p.vy = Math.sin(angle) * speed;
+                        p.alpha = 1.0;
+                        p.size = 2 + rng.next() * 4;
+                        p.color = rng.next() > 0.5 ? "#ff9f43" : "#ffeb3b";
                     }
                 }
             }
@@ -1377,29 +1383,17 @@
                     const angle = rng.next() * Math.PI * 2;
                     const speed = 2 + rng.next() * 4;
 
-                    lightningSparks.push({
-                        x,
-                        y,
-
-                        vx: Math.cos(angle) * speed,
-
-                        vy: Math.sin(angle) * speed,
-
-                        alpha: 1.0,
-
-                        size: 1 + rng.next() * 1.5,
-
-                        length: 8 + rng.next() * 12,
-
-                        rotation: angle,
-
-                        color:
-                            rng.next() > 0.7
-                                ? "#ffd6d6"
-                                : rng.next() > 0.35
-                                  ? "#ff6b6b"
-                                  : "#ff2a2a",
-                    });
+                    const p = poolNext(lightningSparks);
+                    p.active = true;
+                    p.x = x;
+                    p.y = y;
+                    p.vx = Math.cos(angle) * speed;
+                    p.vy = Math.sin(angle) * speed;
+                    p.alpha = 1.0;
+                    p.size = 1 + rng.next() * 1.5;
+                    p.length = 8 + rng.next() * 12;
+                    p.rotation = angle;
+                    p.color = rng.next() > 0.7 ? "#ffd6d6" : rng.next() > 0.35 ? "#ff6b6b" : "#ff2a2a";
                 }
             }
 
@@ -1409,20 +1403,15 @@
 
                     const speed = 2 + rng.next() * 8;
 
-                    lightningSparks.push({
-                        x,
-                        y,
-
-                        vx: Math.cos(angle) * speed,
-
-                        vy: Math.sin(angle) * speed,
-
-                        alpha: 1.0,
-
-                        size: 2 + rng.next() * 5,
-
-                        color: rng.next() > 0.5 ? "#ffffff" : "#a0a0a0", // Silver/White sparks
-                    });
+                    const p = poolNext(lightningSparks);
+                    p.active = true;
+                    p.x = x;
+                    p.y = y;
+                    p.vx = Math.cos(angle) * speed;
+                    p.vy = Math.sin(angle) * speed;
+                    p.alpha = 1.0;
+                    p.size = 2 + rng.next() * 5;
+                    p.color = rng.next() > 0.5 ? "#ffffff" : "#a0a0a0";
                 }
             }
 
@@ -1553,7 +1542,7 @@
                     enemies.splice(i, 1);
                 }
 
-                if (explosionFX.length < MAX_EXPLOSION_FX) { explosionFX.push({ x, y, alpha: 1.0, radius }); }
+                if (explosionFX.length < MAX_EXPLOSION_FX) { const fx = poolNext(explosionFX); fx.active = true; fx.x = x; fx.y = y; fx.alpha = 1.0; fx.radius = radius; }
             }
 
             function triggerMissileLaunch() {
@@ -2057,22 +2046,17 @@
                 for (let i = 0; i < 10; i++) {
                     const angle = rng.next() * Math.PI * 2;
                     const speed = 2 + rng.next() * 4;
-                    lightningSparks.push({
-                        x,
-                        y,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        alpha: 1.0,
-                        size: 1 + rng.next() * 1.5,
-                        length: 8 + rng.next() * 12,
-                        rotation: angle,
-                        color:
-                            rng.next() > 0.6
-                                ? "#ffd6d6"
-                                : rng.next() > 0.5
-                                  ? "#ff6b6b"
-                                  : "#ff1a1a",
-                    });
+                    const p = poolNext(lightningSparks);
+                    p.active = true;
+                    p.x = x;
+                    p.y = y;
+                    p.vx = Math.cos(angle) * speed;
+                    p.vy = Math.sin(angle) * speed;
+                    p.alpha = 1.0;
+                    p.size = 1 + rng.next() * 1.5;
+                    p.length = 8 + rng.next() * 12;
+                    p.rotation = angle;
+                    p.color = rng.next() > 0.6 ? "#ffd6d6" : rng.next() > 0.5 ? "#ff6b6b" : "#ff1a1a";
                 }
             }
 
@@ -2589,15 +2573,15 @@
 
                 playBulletFireSound();
 
-                bullets.push({
-                    x: player.x,
-                    y: player.y,
-                    vx: (dx / len) * 10,
-                    vy: (dy / len) * 10,
-                    r: 5,
-                    bet: betAmount,
-                                        bounces: 0,
-                });
+                const b = poolNext(bullets);
+                b.active = true;
+                b.x = player.x;
+                b.y = player.y;
+                b.vx = (dx / len) * 10;
+                b.vy = (dy / len) * 10;
+                b.r = 5;
+                b.bet = betAmount;
+                b.bounces = 0;
             }
 
             // ── Enemy Tiers ───────────────────────────────────────────────────────────
@@ -3049,7 +3033,7 @@
                 }
 
                 if (explosionFX.length < MAX_EXPLOSION_FX) {
-                explosionFX.push({ x, y, alpha: 1.0, radius });
+                const fx = poolNext(explosionFX); fx.active = true; fx.x = x; fx.y = y; fx.alpha = 1.0; fx.radius = radius;
                 }
 
                 // Add shockwave animation for this explosion
@@ -3758,12 +3742,7 @@
                         }
 
                         if (explosionFX.length < MAX_EXPLOSION_FX) {
-                        explosionFX.push({
-                            x: d4.x,
-                            y: d4.y,
-                            alpha: 1.0,
-                            radius: 95,
-                        });
+                        const fx = poolNext(explosionFX); fx.active = true; fx.x = d4.x; fx.y = d4.y; fx.alpha = 1.0; fx.radius = 95;
                         }
                         
                         chainLightningFX.push({
@@ -5393,21 +5372,15 @@
                     // Create smoke trail
 
                     if (rng.next() < 0.8) {
-                        smokeFX.push({
-                            x: m.x - m.vx * 3 + (rng.next() - 0.5) * 10,
-
-                            y: m.y - m.vy * 3 + (rng.next() - 0.5) * 10,
-
-                            alpha: m.trailAlpha * 0.6,
-
-                            scale: 0.8 + rng.next() * 0.4,
-
-                            fadeSpeed: 0.015,
-
-                            angle: rng.next() * Math.PI * 2,
-
-                            vAngle: (rng.next() - 0.5) * 0.08,
-                        });
+                        const s = poolNext(smokeFX);
+                        s.active = true;
+                        s.x = m.x - m.vx * 3 + (rng.next() - 0.5) * 10;
+                        s.y = m.y - m.vy * 3 + (rng.next() - 0.5) * 10;
+                        s.alpha = m.trailAlpha * 0.6;
+                        s.scale = 0.8 + rng.next() * 0.4;
+                        s.fadeSpeed = 0.015;
+                        s.angle = rng.next() * Math.PI * 2;
+                        s.vAngle = (rng.next() - 0.5) * 0.08;
                     }
 
                     m.trailAlpha *= 0.98; // Fade trail over time
@@ -5457,10 +5430,7 @@
                                     z === 0 ? 1.5 : z === 1 ? 1.2 : 0.8;
 
                                 if (explosionFX.length < MAX_EXPLOSION_FX) {
-                                explosionFX.push({
-                                    x: m.target.x,
-
-                                    y: m.target.y,
+                                const fx = poolNext(explosionFX); fx.active = true; fx.x = m.target.x; fx.y = m.target.y;
 
                                     alpha: 1.0 - z * 0.3,
 
@@ -5515,27 +5485,15 @@
                         if (rng.next() < 0.85) {
                             const trailDist = 14 + s * 12;
 
-                            smokeFX.push({
-                                x:
-                                    m.x -
-                                    Math.cos(mAngle) * trailDist +
-                                    (rng.next() - 0.5) * 8,
-
-                                y:
-                                    m.y -
-                                    Math.sin(mAngle) * trailDist +
-                                    (rng.next() - 0.5) * 8,
-
-                                alpha: 0.6 - s * 0.12,
-
-                                scale: 0.35 + rng.next() * 0.25 + s * 0.1,
-
-                                fadeSpeed: 0.012,
-
-                                angle: rng.next() * Math.PI * 2,
-
-                                vAngle: (rng.next() - 0.5) * 0.06,
-                            });
+                            const sfx = poolNext(smokeFX);
+                            sfx.active = true;
+                            sfx.x = m.x - Math.cos(mAngle) * trailDist + (rng.next() - 0.5) * 8;
+                            sfx.y = m.y - Math.sin(mAngle) * trailDist + (rng.next() - 0.5) * 8;
+                            sfx.alpha = 0.6 - s * 0.12;
+                            sfx.scale = 0.35 + rng.next() * 0.25 + s * 0.1;
+                            sfx.fadeSpeed = 0.012;
+                            sfx.angle = rng.next() * Math.PI * 2;
+                            sfx.vAngle = (rng.next() - 0.5) * 0.06;
                         }
                     }
 
@@ -5597,11 +5555,7 @@
                         }
 
                         if (explosionFX.length < MAX_EXPLOSION_FX) {
-                        explosionFX.push({
-                            x: hitTarget.x,
-                            y: hitTarget.y,
-                            alpha: 1.0,
-                            radius: 40,
+                        const fx = poolNext(explosionFX); fx.active = true; fx.x = hitTarget.x; fx.y = hitTarget.y; fx.alpha = 1.0; fx.radius = 40;
                         });
                         }
 
@@ -5743,19 +5697,14 @@
 
                         const tailY = m.y - Math.sin(angle) * 35;
 
-                        smokeFX.push({
-                            x: tailX + (rng.next() - 0.5) * 15,
-
-                            y: tailY + (rng.next() - 0.5) * 15,
-
-                            alpha: 1.0,
-
-                            scale: 1.0,
-
-                            angle: rng.next() * Math.PI * 2,
-
-                            vAngle: (rng.next() - 0.5) * 0.1,
-                        });
+                        const sfx = poolNext(smokeFX);
+                        sfx.active = true;
+                        sfx.x = tailX + (rng.next() - 0.5) * 15;
+                        sfx.y = tailY + (rng.next() - 0.5) * 15;
+                        sfx.alpha = 1.0;
+                        sfx.scale = 1.0;
+                        sfx.angle = rng.next() * Math.PI * 2;
+                        sfx.vAngle = (rng.next() - 0.5) * 0.1;
                     }
 
                     if (m.progress >= 1) {
@@ -5769,6 +5718,7 @@
 
                 for (let i = smokeFX.length - 1; i >= 0; i--) {
                     const s = smokeFX[i];
+                    if (!s.active) continue;
 
                     s.alpha -= s.fadeSpeed || 0.02; // fade to 0
 
@@ -5776,7 +5726,7 @@
 
                     s.angle += s.vAngle; // random rotation
 
-                    if (s.alpha <= 0 || s.scale <= 0) smokeFX.splice(i, 1);
+                    if (s.alpha <= 0 || s.scale <= 0) s.active = false;
                 }
 
                 // Tick explosion animations
@@ -5814,9 +5764,11 @@
                 // Tick explosion FX
 
                 for (let i = explosionFX.length - 1; i >= 0; i--) {
-                    explosionFX[i].alpha -= 0.03;
+                    const fx = explosionFX[i];
+                    if (!fx.active) continue;
+                    fx.alpha -= 0.03;
 
-                    if (explosionFX[i].alpha <= 0) explosionFX.splice(i, 1);
+                    if (fx.alpha <= 0) fx.active = false;
                 }
 
                 // Clean up shockwaves that are done
@@ -5832,13 +5784,14 @@
 
                 for (let i = lightningSparks.length - 1; i >= 0; i--) {
                     const p = lightningSparks[i];
+                    if (!p.active) continue;
 
                     p.x += p.vx;
                     p.y += p.vy;
 
                     p.alpha -= 0.06;
 
-                    if (p.alpha <= 0) lightningSparks.splice(i, 1);
+                    if (p.alpha <= 0) p.active = false;
                 }
 
                 // D2 random movement with speed phases
@@ -6198,6 +6151,7 @@
 
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
+                    if (!b.active) continue;
 
                     b.x += b.vx;
                     b.y += b.vy;
@@ -6207,21 +6161,15 @@
                     if (rng.next() < 0.15) {
                         const angle = Math.atan2(b.vy, b.vx);
 
-                        smokeFX.push({
-                            x: b.x - Math.cos(angle) * 10,
-
-                            y: b.y - Math.sin(angle) * 10,
-
-                            alpha: 0.35,
-
-                            scale: 0.1,
-
-                            fadeSpeed: 0.06, // fades away quickly
-
-                            angle: rng.next() * Math.PI * 2,
-
-                            vAngle: (rng.next() - 0.5) * 0.1,
-                        });
+                        const sfx = poolNext(smokeFX);
+                        sfx.active = true;
+                        sfx.x = b.x - Math.cos(angle) * 10;
+                        sfx.y = b.y - Math.sin(angle) * 10;
+                        sfx.alpha = 0.35;
+                        sfx.scale = 0.1;
+                        sfx.fadeSpeed = 0.06;
+                        sfx.angle = rng.next() * Math.PI * 2;
+                        sfx.vAngle = (rng.next() - 0.5) * 0.1;
                     }
 
                     if (b.x - b.r < 0) {
@@ -6253,7 +6201,7 @@
                         const refundAmt = b.bet;
                         balance += refundAmt;
                         rtp.totalSpent -= refundAmt;
-                        bullets.splice(i, 1);
+                        b.active = false;
                         if (refundPopups.length < MAX_REFUND_POPUPS) {
                             refundPopups.push({
                                 text: "REFUND +" + refundAmt.toString(),
@@ -6495,21 +6443,15 @@
                             const py = Math.sin(ang + Math.PI / 2);
 
                             for (const sgn of [-1, 1]) {
-                                smokeFX.push({
-                                    x:
-                                        tailX +
-                                        px * side * sgn +
-                                        (rng.next() - 0.5) * 4,
-                                    y:
-                                        tailY +
-                                        py * side * sgn +
-                                        (rng.next() - 0.5) * 4,
-                                    alpha: 0.55,
-                                    scale: 0.2 + rng.next() * 0.09,
-                                    fadeSpeed: 0.045,
-                                    angle: rng.next() * Math.PI * 2,
-                                    vAngle: (rng.next() - 0.5) * 0.06,
-                                });
+                                const sfx = poolNext(smokeFX);
+                                sfx.active = true;
+                                sfx.x = tailX + px * side * sgn + (rng.next() - 0.5) * 4;
+                                sfx.y = tailY + py * side * sgn + (rng.next() - 0.5) * 4;
+                                sfx.alpha = 0.55;
+                                sfx.scale = 0.2 + rng.next() * 0.09;
+                                sfx.fadeSpeed = 0.045;
+                                sfx.angle = rng.next() * Math.PI * 2;
+                                sfx.vAngle = (rng.next() - 0.5) * 0.06;
                             }
                         }
                     }
@@ -6536,6 +6478,7 @@
 
                     for (let j = bullets.length - 1; j >= 0; j--) {
                         const b = bullets[j];
+                        if (!b.active) continue;
 
                         if ((e.isD4 && e.state !== "normal") || e.d4Linked) {
                             continue;
@@ -6557,11 +6500,11 @@
                             // D3 is invulnerable while in special states (spinning, bouncing, exploding)
 
                             if (e.state === "dying") {
-                                bullets.splice(j, 1);
+                                b.active = false;
                                 break;
                             }
                             if (e.isD3 && e.state !== "normal") {
-                                bullets.splice(j, 1);
+                                b.active = false;
                                 break;
                             }
                             if (e.isD4 && e.state !== "normal") {
@@ -6573,7 +6516,7 @@
 
                             spawnBulletHit(b.x, b.y);
 
-                            bullets.splice(j, 1);
+                            b.active = false;
 
                             processBossHit(e, ts);
 
@@ -8645,7 +8588,7 @@
                 }
 
                 for (const fx of explosionFX) {
-                    if (fx.alpha <= 0) continue;
+                    if (!fx.active || fx.alpha <= 0) continue;
 
                     const expand = 1 - fx.alpha;
 
@@ -8937,6 +8880,7 @@
                 // Smoke FX
 
                 smokeFX.forEach((s) => {
+                    if (!s.active) return;
                     ctx.save();
 
                     ctx.translate(s.x, s.y);
@@ -9001,6 +8945,7 @@
                 // Bullets with sprite rotation
 
                 bullets.forEach((b) => {
+                    if (!b.active) return;
                     if (bulletImg.complete && bulletImg.naturalWidth > 0) {
                         ctx.save();
 
@@ -9023,6 +8968,7 @@
                 });
 
                 lightningSparks.forEach((p) => {
+                    if (!p.active) return;
                     ctx.save();
                     ctx.globalAlpha = p.alpha;
                     ctx.translate(p.x, p.y);

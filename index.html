@@ -368,14 +368,22 @@
                 font: bold 14px 'Impact','Arial Black',sans-serif;
                 color: #ffd866;
                 text-shadow: 0 0 6px rgba(255,200,80,0.3);
-                text-align: center;
+                display: flex;
+                align-items: center;
+                gap: 4px;
                 background: rgba(0,0,0,0.4);
                 border: 1px solid rgba(255,200,100,0.15);
                 border-radius: 4px;
-                padding: 2px 8px;
+                padding: 1px 4px;
                 left: 50%;
                 transform: translateX(-50%);
                 bottom: 0;
+            }
+            .betBtn {
+                font: bold 18px 'Impact','Arial Black',sans-serif;
+                padding: 0 3px;
+                line-height: 1;
+                pointer-events: none;
             }
             /* ── Landscape Orientation Overlay ────────────────────────── */
             #orientationOverlay {
@@ -506,7 +514,9 @@
                     <button id="autoBtn">AUTO</button>
                 </div>
                 <div id="betIndicator">
+                    <span class="betBtn betMinus">−</span>
                     <span id="betDisplay">1</span>
+                    <span class="betBtn betPlus">+</span>
                 </div>
 
             </div>

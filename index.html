@@ -5430,12 +5430,7 @@
                                     z === 0 ? 1.5 : z === 1 ? 1.2 : 0.8;
 
                                 if (explosionFX.length < MAX_EXPLOSION_FX) {
-                                const fx = poolNext(explosionFX); fx.active = true; fx.x = m.target.x; fx.y = m.target.y;
-
-                                    alpha: 1.0 - z * 0.3,
-
-                                    radius: 30 * zoomScale,
-                                });
+                                const fx = poolNext(explosionFX); fx.active = true; fx.x = m.target.x; fx.y = m.target.y; fx.alpha = 1.0 - z * 0.3; fx.radius = 30 * zoomScale;
                                 }
                             }, z * 100);
                         }
@@ -5556,7 +5551,6 @@
 
                         if (explosionFX.length < MAX_EXPLOSION_FX) {
                         const fx = poolNext(explosionFX); fx.active = true; fx.x = hitTarget.x; fx.y = hitTarget.y; fx.alpha = 1.0; fx.radius = 40;
-                        });
                         }
 
                         if (nukeLanded && hitTarget.hp <= 0) {
@@ -10095,17 +10089,19 @@ function lockLandscape() {
     }
 }
 
-// Telegram WebApp Initialization
-if (window.Telegram && window.Telegram.WebApp) {
-    const twa = window.Telegram.WebApp;
-    twa.ready();
-    twa.expand();
-    
-    // Some devices don't trigger 'resize' when the Telegram header/footer changes
-    twa.onEvent('viewportChanged', () => {
-        checkOrientation();
-    });
-}
+// Telegram WebApp Initialization (with retry, handles async injection)
+(function initTg() {
+    try {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const twa = window.Telegram.WebApp;
+            twa.ready();
+            twa.expand();
+            twa.onEvent('viewportChanged', checkOrientation);
+            return;
+        }
+    } catch (_) { /* WebApp methods may throw in restrictive environments */ }
+    setTimeout(initTg, 50);
+})();
 
 // Initial check
 checkOrientation();

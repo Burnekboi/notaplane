@@ -63,6 +63,13 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 - Rendering/FX layer:
   - `draw()` renders entities and heavy visual effects (lightning, explosions, smoke, beam/glow effects) directly via Canvas 2D.
 
+## Git workflow
+- **Commit and push after every code change.** Every time I finish writing code (bug fix, feature, refactor, etc.), I must immediately:
+  1. `git add -A`
+  2. `git commit -m "<descriptive message>"`
+  3. `git push`
+- This applies to all code changes, no matter how small.
+
 ## Important implementation notes
 - The codebase is highly stateful; many systems mutate shared arrays/objects directly from timers and per-frame updates.
 - Several mechanics are coupled through shared global flags (for example attack locking during D3 sequence and boss state transitions).

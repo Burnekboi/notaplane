@@ -18,8 +18,10 @@
             body {
                 background: #000;
                 display: flex;
+                flex-direction: column;
                 justify-content: center;
                 align-items: center;
+                width: 100vw;
                 height: 100vh;
                 height: 100dvh;
                 margin: 0;
@@ -387,9 +389,6 @@
                 border: 1px solid rgba(255,200,100,0.15);
                 border-radius: 4px;
                 padding: 1px 4px;
-                left: 50%;
-                transform: translateX(-50%);
-                bottom: 0;
             }
             .betBtn {
                 font: bold 18px 'Impact','Arial Black',sans-serif;
@@ -906,19 +905,27 @@
                 rightHudBox.style.width = `${textboxW}px`;
                 rightHudBox.style.height = `${textboxH}px`;
                 rightHudBox.style.opacity = showHud ? "1" : "0";
+
+                const betIndicator = document.getElementById("betIndicator");
+                if (betIndicator) {
+                    betIndicator.style.position = 'absolute';
+                    betIndicator.style.left = `${player.x}px`;
+                    betIndicator.style.bottom = '6px';
+                    betIndicator.style.transform = 'translateX(-50%)';
+                }
             }
 
             const W = canvas.width,
                 H = canvas.height;
 
-            const player = { x: 140, y: H - 40, w: 50, h: 30 };
+            const player = { x: 175, y: H - 55, w: 50, h: 30 };
 
             const ACTIVE_PLAYER_INDEX = 0;
             const basePositions = [
-                { x: 140, y: 460 },  // 0: bottom-left  (PLAYER)
-                { x: 660, y: 460 },  // 1: bottom-right (vacant)
-                { x: 140, y: 40 },   // 2: top-left     (vacant)
-                { x: 660, y: 40 },   // 3: top-right    (vacant)
+                { x: 175, y: 445 },  // 0: bottom-left  (PLAYER)
+                { x: 625, y: 445 },  // 1: bottom-right (vacant)
+                { x: 175, y: 55 },   // 2: top-left     (vacant)
+                { x: 625, y: 55 },   // 3: top-right    (vacant)
             ];
 
             const bullets = [];

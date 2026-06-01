@@ -9,6 +9,8 @@ const { initBot } = require('./bot');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+const { initSocket } = require('./socket');
+
 app.use(cors());
 app.use(express.json());
 
@@ -43,6 +45,10 @@ app.use(express.static(path.join(__dirname, '..')));
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
+// Initialize Socket.IO for multiplayer
+const io = initSocket(server);
+console.log('Socket.IO multiplayer initialized');
 
 // Health check for container platforms
 app.get('/health', (req, res) => res.send('ok'));

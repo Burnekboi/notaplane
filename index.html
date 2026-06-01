@@ -5,6 +5,7 @@
         <title>Shooter Prototype</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
 
         <style>
             * {
@@ -500,6 +501,152 @@
                 margin-top: 8px;
             }
 
+            /* ── Room Lobby Overlay ── */
+            #roomOverlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 99998;
+                background: rgba(5,10,20,0.95);
+                justify-content: center;
+                align-items: center;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+            }
+            #roomOverlay.active {
+                display: flex;
+            }
+            #roomLobby {
+                text-align: center;
+                color: #ffd866;
+                max-width: 380px;
+                width: 85%;
+            }
+            #lobbyTitle {
+                font-size: 24px;
+                letter-spacing: 3px;
+                margin-bottom: 2px;
+                text-shadow: 0 0 20px rgba(255,200,80,0.3);
+            }
+            #lobbySubtitle {
+                font-size: 12px;
+                letter-spacing: 4px;
+                color: rgba(255,216,102,0.5);
+                margin-bottom: 30px;
+                text-transform: uppercase;
+            }
+            #lobbyJoin {
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                margin-bottom: 12px;
+            }
+            #lobbyCodeInput {
+                width: 130px;
+                padding: 10px 14px;
+                background: rgba(255,255,255,0.06);
+                border: 2px solid rgba(255,200,100,0.3);
+                border-radius: 6px;
+                color: #ffd866;
+                font: bold 22px 'Impact','Arial Black',sans-serif;
+                text-align: center;
+                letter-spacing: 6px;
+                text-transform: uppercase;
+                outline: none;
+            }
+            #lobbyCodeInput::placeholder {
+                color: rgba(255,216,102,0.25);
+                font-size: 11px;
+                letter-spacing: 2px;
+            }
+            #lobbyCodeInput:focus {
+                border-color: rgba(255,200,100,0.7);
+            }
+            #lobbyJoinBtn, #lobbyCreateBtn {
+                padding: 10px 24px;
+                border: 2px solid rgba(255,200,100,0.5);
+                border-radius: 6px;
+                background: linear-gradient(180deg, rgba(255,200,100,0.15), rgba(200,140,40,0.08));
+                color: #ffd866;
+                font: bold 16px 'Impact','Arial Black',sans-serif;
+                letter-spacing: 2px;
+                cursor: pointer;
+                text-shadow: 0 0 10px rgba(255,200,80,0.4);
+                transition: all 0.2s;
+            }
+            #lobbyJoinBtn:hover, #lobbyCreateBtn:hover {
+                background: linear-gradient(180deg, rgba(255,200,100,0.3), rgba(200,140,40,0.18));
+                border-color: rgba(255,220,140,0.8);
+            }
+            #lobbyJoinBtn:active, #lobbyCreateBtn:active {
+                transform: scale(0.97);
+            }
+            #lobbyOr {
+                color: rgba(255,216,102,0.3);
+                font-size: 13px;
+                letter-spacing: 2px;
+                margin: 12px 0;
+            }
+            #lobbyRoomInfo {
+                margin-top: 24px;
+                padding-top: 20px;
+                border-top: 1px solid rgba(255,200,100,0.15);
+            }
+            #lobbyCodeDisplay {
+                font-size: 18px;
+                letter-spacing: 3px;
+                margin-bottom: 16px;
+            }
+            #lobbyCodeDisplay span {
+                color: #fff;
+                font-size: 28px;
+                letter-spacing: 8px;
+                background: rgba(255,255,255,0.05);
+                padding: 4px 14px;
+                border-radius: 4px;
+            }
+            #lobbySeats {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                margin-bottom: 16px;
+            }
+            .seat {
+                padding: 8px 14px;
+                background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(255,200,100,0.1);
+                border-radius: 4px;
+                font-size: 14px;
+                letter-spacing: 1px;
+                color: rgba(255,216,102,0.4);
+                display: flex;
+                justify-content: space-between;
+            }
+            .seat.occupied {
+                border-color: rgba(255,200,100,0.4);
+                color: #ffd866;
+                background: rgba(255,200,100,0.06);
+            }
+            .seat .seatName {
+                font-size: 13px;
+                color: #fff;
+            }
+            #lobbyWaitMsg {
+                color: rgba(255,216,102,0.4);
+                font-size: 12px;
+                letter-spacing: 2px;
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 0.4; }
+                50% { opacity: 1; }
+            }
+            #lobbyError {
+                color: #ff6644;
+                font-size: 13px;
+                margin-top: 12px;
+                min-height: 20px;
+            }
+
         </style>
     </head>
 
@@ -514,6 +661,32 @@
                 <div class="loading-pct" id="loadingPct">0%</div>
                 <div class="loading-sub">Preparing the battlefield...</div>
             </div>
+
+            <!-- ── Room Lobby Overlay ── -->
+            <div id="roomOverlay">
+                <div id="roomLobby">
+                    <div id="lobbyTitle">SPACE KING JACKPOT</div>
+                    <div id="lobbySubtitle">Multiplayer Table</div>
+                    <div id="lobbyJoin">
+                        <input id="lobbyCodeInput" type="text" maxlength="4" placeholder="ROOM CODE" spellcheck="false">
+                        <button id="lobbyJoinBtn">JOIN</button>
+                    </div>
+                    <div id="lobbyOr">— or —</div>
+                    <button id="lobbyCreateBtn">CREATE TABLE</button>
+                    <div id="lobbyRoomInfo" style="display:none">
+                        <div id="lobbyCodeDisplay">ROOM: <span id="roomCodeSpan"></span></div>
+                        <div id="lobbySeats">
+                            <div class="seat" data-seat="0">Seat 1 <span class="seatName"></span></div>
+                            <div class="seat" data-seat="1">Seat 2 <span class="seatName"></span></div>
+                            <div class="seat" data-seat="2">Seat 3 <span class="seatName"></span></div>
+                            <div class="seat" data-seat="3">Seat 4 <span class="seatName"></span></div>
+                        </div>
+                        <div id="lobbyWaitMsg">Waiting for players...</div>
+                    </div>
+                    <div id="lobbyError"></div>
+                </div>
+            </div>
+
             <canvas id="bgCanvas"></canvas>
             <canvas id="gameCanvas"></canvas>
             <canvas id="uiCanvas"></canvas>
@@ -708,23 +881,8 @@
             ];
 
             function startGameAfterPreload() {
-                const overlay = document.getElementById('loadingOverlay');
-                if (overlay) overlay.classList.add('hidden');
-                // If the user came from the Dashboard PLAY button, start music
-                // right away instead of deferring.
-                var fromDash = new URLSearchParams(location.search).get('fromDashboard');
-                if (!fromDash) {
-                    var _t = sessionStorage.getItem('_playTs');
-                    if (_t && Date.now() - Number(_t) < 5000) fromDash = '1';
-                }
-                if (fromDash) {
-                    sessionStorage.removeItem('_playTs');
-                    startBgMusic();
-                } else if (typeof requestIdleCallback !== 'undefined') {
-                    requestIdleCallback(function () { startBgMusic(); }, { timeout: 3000 });
-                } else {
-                    setTimeout(startBgMusic, 1500);
-                }
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                showLobby();
             }
 
             // Kick off preloading
@@ -940,7 +1098,7 @@
 
             const enemies = [];
 
-            let gamePhase = 'intro';
+            var gamePhase = 'lobby';
             let introStartTime = performance.now();
 
             let betAmount = 1; // cost per shot (1 unit)
@@ -6887,6 +7045,10 @@
                     drawIntro();
                     return;
                 }
+                if (gamePhase === 'lobby') {
+                    drawBg();
+                    return;
+                }
 
                 layoutBaseHud();
                 drawBg();
@@ -10043,9 +10205,40 @@
                      ctx.restore();
                 }
 
-                ctx.restore();
+                 ctx.restore();
 
+                drawRemotePlayers();
                 drawUi();
+            }
+
+            function drawRemotePlayers() {
+                if (!mpRoom || mpPlayers.length === 0) return;
+                var colors = ['#ff4444', '#44ff44', '#4488ff', '#ffaa00'];
+                for (var i = 0; i < mpPlayers.length; i++) {
+                    var p = mpPlayers[i];
+                    if (!p || p.seatIndex === mpSeat) continue;
+                    var bp = basePositions[p.seatIndex];
+                    if (!bp) continue;
+                    var angle = p.cannonAngle || 0;
+                    ctx.save();
+                    ctx.translate(bp.x, bp.y);
+                    ctx.rotate(angle);
+                    ctx.fillStyle = colors[p.seatIndex % colors.length];
+                    ctx.shadowColor = colors[p.seatIndex % colors.length];
+                    ctx.shadowBlur = 8;
+                    ctx.fillRect(0, -6, 32, 12);
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                    // Name label
+                    ctx.fillStyle = colors[p.seatIndex % colors.length];
+                    ctx.font = 'bold 10px Impact,Arial Black,sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText(p.name, bp.x, bp.y - 24);
+                    ctx.shadowBlur = 0;
+                }
             }
 
             // ── Thunder FX (Dragon Strike) ──────────────────────────────────────
@@ -10129,11 +10322,11 @@
                         document.getElementById('missileBtn').style.display = '';
                         document.getElementById('dragonBtn').style.display = '';
                     }
-                } else if (isLandscape && !document.hidden) {
+                } else if (gamePhase === 'playing' && isLandscape && !document.hidden) {
                     update(ts);
                 }
 
-                if (isLandscape) {
+                if (isLandscape && gamePhase !== 'lobby') {
                     draw();
                 }
 
@@ -10217,6 +10410,246 @@ window.addEventListener('resize', () => {
     checkOrientation();
     resizeGame();
 });
+
+            // ── Multiplayer ─────────────────────────────────────────────────────────
+            var socket = null;
+            var mpRoom = null;
+            var mpSeat = -1;
+            var mpIsHost = false;
+            var mpPlayers = []; // { seatIndex, name, cannonAngle, balance }
+            var mpConnected = false;
+            var mpHostStateInterval = null;
+            var mpAimInterval = null;
+            var mpLastHostUpdate = 0;
+
+            var roomOverlay = document.getElementById('roomOverlay');
+            var lobbyCodeInput = document.getElementById('lobbyCodeInput');
+            var lobbyJoinBtn = document.getElementById('lobbyJoinBtn');
+            var lobbyCreateBtn = document.getElementById('lobbyCreateBtn');
+            var lobbyRoomInfo = document.getElementById('lobbyRoomInfo');
+            var roomCodeSpan = document.getElementById('roomCodeSpan');
+            var lobbyErrorEl = document.getElementById('lobbyError');
+            var lobbyWaitMsg = document.getElementById('lobbyWaitMsg');
+            var lobbySeatsEl = document.getElementById('lobbySeats');
+
+            function showLobby() { roomOverlay.classList.add('active'); }
+            function hideLobby() { roomOverlay.classList.remove('active'); }
+
+            function updateSeats() {
+                var seats = lobbySeatsEl.querySelectorAll('.seat');
+                seats.forEach(function(el) {
+                    var idx = parseInt(el.dataset.seat);
+                    var p = mpPlayers.find(function(x) { return x.seatIndex === idx; });
+                    if (p) {
+                        el.classList.add('occupied');
+                        el.querySelector('.seatName').textContent = p.name;
+                    } else {
+                        el.classList.remove('occupied');
+                        el.querySelector('.seatName').textContent = '';
+                    }
+                });
+            }
+
+            function setLobbyError(msg) { lobbyErrorEl.textContent = msg; }
+
+            function startGame() {
+                hideLobby();
+                // Place player at their seat
+                var seatPos = basePositions[mpSeat];
+                if (seatPos) { player.x = seatPos.x; player.y = seatPos.y; }
+                var isJoining = !mpIsHost;
+                if (isJoining) {
+                    // Joining an existing table — skip intro, go straight to playing
+                    gamePhase = 'playing';
+                    document.getElementById('hudOverlay').style.display = '';
+                    document.getElementById('ui').style.display = '';
+                    document.getElementById('missileBtn').style.display = '';
+                    document.getElementById('dragonBtn').style.display = '';
+                } else {
+                    introStartTime = performance.now();
+                    gamePhase = 'intro';
+                }
+                // ── Periodic aim broadcast (all players) ─────────────────────
+                if (mpAimInterval) clearInterval(mpAimInterval);
+                mpAimInterval = setInterval(function() {
+                    if (!socket || !mpRoom || !socket.connected) return;
+                    socket.emit('playerAction', { type: 'aim', angle: Math.atan2(mouseY - player.y, mouseX - player.x) });
+                }, 100);
+                // ── Host state broadcast (host only) ─────────────────────────
+                if (mpIsHost) {
+                    if (mpHostStateInterval) clearInterval(mpHostStateInterval);
+                    mpHostStateInterval = setInterval(function() {
+                        if (!socket || !mpRoom) return;
+                        socket.emit('hostState', {
+                            enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
+                        });
+                    }, 100);
+                }
+            }
+
+            function connectSocket() {
+                try {
+                    socket = io();
+                } catch (e) {
+                    setLobbyError('Connection failed: ' + e.message);
+                    return;
+                }
+                socket.on('connect', function() {
+                    mpConnected = true;
+                    lobbyErrorEl.textContent = '';
+                });
+                socket.on('disconnect', function() {
+                    mpConnected = false;
+                    if (mpRoom) setLobbyError('Disconnected from server');
+                });
+                socket.on('connect_error', function(err) {
+                    setLobbyError('Connection error: ' + err.message);
+                });
+
+                socket.on('playerJoined', function(data) {
+                    mpPlayers = data.players;
+                    updateSeats();
+                });
+                socket.on('playerLeft', function(data) {
+                    mpPlayers = data.players;
+                    updateSeats();
+                    if (!mpPlayers.find(function(p) { return p.seatIndex === mpSeat; })) {
+                        // I was kicked? Reset
+                        mpRoom = null;
+                        mpSeat = -1;
+                        mpIsHost = false;
+                        showLobby();
+                    }
+                });
+                socket.on('youAreHost', function() {
+                    mpIsHost = true;
+                    if (mpHostStateInterval) clearInterval(mpHostStateInterval);
+                    mpHostStateInterval = setInterval(function() {
+                        if (!socket || !mpRoom) return;
+                        socket.emit('hostState', {
+                            enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
+                        });
+                    }, 100);
+                });
+                    }, 100);
+                });
+                socket.on('roomClosed', function() {
+                    mpRoom = null;
+                    mpSeat = -1;
+                    mpIsHost = false;
+                    if (mpHostStateInterval) { clearInterval(mpHostStateInterval); mpHostStateInterval = null; }
+                    setLobbyError('Room closed');
+                    showLobby();
+                });
+
+                // ── Remote action received from another player ──────────────────────
+                socket.on('remoteAction', function(data) {
+                    if (data.type === 'fire') {
+                        // Another player fired — create a bullet to render
+                        var seatIdx = data.seatIndex;
+                        var seat = basePositions[seatIdx];
+                        if (!seat) return;
+                        var angle = data.angle || 0;
+                        var bx = seat.x + Math.cos(angle) * 20;
+                        var by = seat.y + Math.sin(angle) * 20;
+                        var bvx = Math.cos(angle) * 8;
+                        var bvy = Math.sin(angle) * 8;
+                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, life: 0, maxLife: 120 });
+                    } else if (data.type === 'aim') {
+                        // Another player moved their aim — update their angle
+                        var p = mpPlayers.find(function(x) { return x.seatIndex === data.seatIndex; });
+                        if (p) p.cannonAngle = data.angle;
+                    }
+                });
+
+                // ── Host state snapshot received (guests only) ──────────────────────
+                socket.on('hostStateUpdate', function(data) {
+                    if (mpIsHost) return; // ignore our own echo
+                    // Sync enemies from host
+                    if (data.enemies) {
+                        // Merge: keep enemies that still exist, update their state
+                        var newEnemies = data.enemies;
+                        // Remove enemies not in the host snapshot
+                        for (var i = enemies.length - 1; i >= 0; i--) {
+                            var found = newEnemies.some(function(ne) { return ne.x === enemies[i].x && ne.y === enemies[i].y && ne.tierIndex === enemies[i].tierIndex; });
+                            if (!found) { enemies.splice(i, 1); }
+                        }
+                        // Add/update enemies from host
+                        newEnemies.forEach(function(ne) {
+                            var existing = enemies.find(function(e) { return Math.abs(e.x - ne.x) < 5 && Math.abs(e.y - ne.y) < 5 && e.tierIndex === ne.tierIndex; });
+                            if (existing) {
+                                existing.x = ne.x; existing.y = ne.y; existing.hp = ne.hp;
+                            } else {
+                                enemies.push({ x: ne.x, y: ne.y, size: ne.size, hp: ne.hp, maxHp: ne.maxHp, tierIndex: ne.tierIndex, vx: ne.vx || 0, vy: ne.vy || 0, isD1: !!ne.isD1, isD2: !!ne.isD2, state: ne.state || 'alive', active: true });
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Connect when page loads
+            connectSocket();
+
+            // ── Lobby UI Handlers ──────────────────────────────────────────────────
+            lobbyCreateBtn.addEventListener('click', function() {
+                if (!socket || !socket.connected) { setLobbyError('Connecting...'); return; }
+                lobbyErrorEl.textContent = '';
+                socket.emit('createRoom', { name: 'Player' }, function(res) {
+                    if (!res.ok) { setLobbyError(res.error); return; }
+                    mpRoom = res.code;
+                    mpSeat = res.seatIndex;
+                    mpIsHost = res.isHost;
+                    mpPlayers = res.players;
+                    roomCodeSpan.textContent = res.code;
+                    lobbyRoomInfo.style.display = 'block';
+                    lobbyWaitMsg.textContent = 'Starting game...';
+                    updateSeats();
+                    startGame();
+                });
+            });
+
+            lobbyJoinBtn.addEventListener('click', function() {
+                var code = lobbyCodeInput.value.trim().toUpperCase();
+                if (code.length < 4) { setLobbyError('Enter a 4-character code'); return; }
+                if (!socket || !socket.connected) { setLobbyError('Connecting...'); return; }
+                lobbyErrorEl.textContent = '';
+                socket.emit('joinRoom', { code: code, name: 'Player' }, function(res) {
+                    if (!res.ok) { setLobbyError(res.error); return; }
+                    mpRoom = res.code;
+                    mpSeat = res.seatIndex;
+                    mpIsHost = res.isHost;
+                    mpPlayers = res.players;
+                    roomCodeSpan.textContent = res.code;
+                    lobbyRoomInfo.style.display = 'block';
+                    lobbyWaitMsg.textContent = 'Joining game...';
+                    updateSeats();
+                    startGame();
+                });
+            });
+
+            lobbyCodeInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') lobbyJoinBtn.click();
+            });
+
+            // ── Send player actions ───────────────────────────────────────────────
+            var mpActionThrottle = 0;
+
+            function mpSendAction(type, data) {
+                if (!socket || !mpRoom || !socket.connected) return;
+                data = data || {};
+                data.type = type;
+                socket.emit('playerAction', data);
+            }
+
+            // Wrap fireBullet to also send action
+            var _origFireBullet = fireBullet;
+            fireBullet = function() {
+                _origFireBullet();
+                if (mpRoom) {
+                    var angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+                    mpSendAction('fire', { angle: angle });
+                }
+            };
 
             // Wait for assets to finish loading before starting the game loop
             function tryStartLoop() {

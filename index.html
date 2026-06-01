@@ -881,10 +881,10 @@
                 if (!miniExplosionAudio) {
                     miniExplosionAudio = new Audio('sfx/dragon fire.mp3');
                 }
-                miniExplosionAudio.volume = 0.12;
-                miniExplosionAudio.playbackRate = 0.7 + Math.random() * 0.3;
-                miniExplosionAudio.currentTime = 0;
-                miniExplosionAudio.play().catch(() => {});
+                const clone = miniExplosionAudio.cloneNode();
+                clone.volume = 0.12;
+                clone.playbackRate = 0.7 + Math.random() * 0.3;
+                clone.play().catch(() => {});
             }
 
             function layoutBaseHud() {

@@ -875,26 +875,6 @@
                 dragonFireAudio.play().catch(() => {});
             }
 
-            const EXPLOSION_AUDIO_POOL_SIZE = 4;
-            let explosionAudioPool = null;
-            let explosionAudioIdx = 0;
-
-            function playMiniExplosion() {
-                if (!explosionAudioPool) {
-                    explosionAudioPool = [];
-                    for (let i = 0; i < EXPLOSION_AUDIO_POOL_SIZE; i++) {
-                        const a = new Audio('sfx/dragon fire.mp3');
-                        a.volume = 0.12;
-                        explosionAudioPool.push(a);
-                    }
-                }
-                const a = explosionAudioPool[explosionAudioIdx];
-                explosionAudioIdx = (explosionAudioIdx + 1) % EXPLOSION_AUDIO_POOL_SIZE;
-                a.playbackRate = 0.7 + Math.random() * 0.3;
-                a.currentTime = 0;
-                a.play().catch(() => {});
-            }
-
             function layoutBaseHud() {
                 const leftHudBox = document.getElementById("leftHudBox");
                 const rightHudBox = document.getElementById("rightHudBox");
@@ -3070,11 +3050,7 @@
                     age: rng.next() * Math.PI * 2,
 
                     isD1: true,
-                    slowTimer: 0,
-                    slowed: false,
-                    baseVx: vx,
-                    baseVy: vy,
-                    
+
                     // D1 holds reward internally
                     d1Reward: betAmount * rollD1Cap(),
                 };
@@ -5142,7 +5118,7 @@
                 if (e.tierIndex === 6 && !e.t6Triggered && e.hp <= 0) {
                     e.t6Triggered = true;
                     showTitle('T6');
-                    playMiniExplosion();
+                                playDragonFireSound();
                     e.state = "charging";
                     e.hp = 0;
                     e.vx = 0;
@@ -5245,8 +5221,8 @@
                         let multi = e.dyingFinalMult || 1;
 
                         payout = killBet * bossState.t6bRewardScale * multi;
-                        triggerScreenShake(18, 500);
-                        playMiniExplosion();
+    triggerScreenShake(18, 500);
+                                    playDragonFireSound();
                         const tii = activeTitles.findIndex(t => t.type === 'T6B');
                         if (tii !== -1) activeTitles.splice(tii, 1);
                     } else if (e.tierIndex === 15) {
@@ -6000,32 +5976,6 @@
                     }
                 }
 
-                // D1 center-slow behaviour
-
-                for (const e of enemies) {
-                    if (!e.isD1) continue;
-
-                    const distCenter = Math.hypot(e.x - W / 2, e.y - H / 2);
-
-                    if (!e.slowed && distCenter < 100) {
-                        e.slowed = true;
-
-                        e.slowTimer = ts;
-
-                        e.vx *= 0.25;
-
-                        e.vy *= 0.25;
-                    }
-
-                    if (e.slowed && ts - e.slowTimer >= 3000) {
-                        e.slowed = false;
-
-                        e.vx = e.baseVx;
-
-                        e.vy = e.baseVy;
-                    }
-                }
-
                 // Auto aim — fires at closest enemy of the locked tier (+ elite variant)
 
                 if (autoMode && !nukeMode && autoTierIndex !== -1) {
@@ -6382,7 +6332,7 @@
                         if (e.tierIndex === 15) {
                             const dur = ts - e.t6cDeathTime;
                             if (dur > 1000) {
-                                playMiniExplosion();
+                                playDragonFireSound();
                                 spawnExplosionAnimation(e.x, e.y, e.tierIndex, e.size);
                                 enemies.splice(i, 1);
                             }

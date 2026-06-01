@@ -875,16 +875,24 @@
                 dragonFireAudio.play().catch(() => {});
             }
 
-            let miniExplosionAudio = null;
+            const EXPLOSION_AUDIO_POOL_SIZE = 4;
+            let explosionAudioPool = null;
+            let explosionAudioIdx = 0;
 
             function playMiniExplosion() {
-                if (!miniExplosionAudio) {
-                    miniExplosionAudio = new Audio('sfx/dragon fire.mp3');
+                if (!explosionAudioPool) {
+                    explosionAudioPool = [];
+                    for (let i = 0; i < EXPLOSION_AUDIO_POOL_SIZE; i++) {
+                        const a = new Audio('sfx/dragon fire.mp3');
+                        a.volume = 0.12;
+                        explosionAudioPool.push(a);
+                    }
                 }
-                const clone = miniExplosionAudio.cloneNode();
-                clone.volume = 0.12;
-                clone.playbackRate = 0.7 + Math.random() * 0.3;
-                clone.play().catch(() => {});
+                const a = explosionAudioPool[explosionAudioIdx];
+                explosionAudioIdx = (explosionAudioIdx + 1) % EXPLOSION_AUDIO_POOL_SIZE;
+                a.playbackRate = 0.7 + Math.random() * 0.3;
+                a.currentTime = 0;
+                a.play().catch(() => {});
             }
 
             function layoutBaseHud() {

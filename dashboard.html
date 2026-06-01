@@ -625,8 +625,7 @@
                     ctx.save();
                     ctx.globalAlpha = brightness;
                     ctx.fillStyle = '#c8d8ff';
-                    ctx.shadowColor = '#6699ff';
-                    ctx.shadowBlur = drawSize * 2;
+                    // shadowBlur removed for performance
                     ctx.beginPath();
                     ctx.arc(px, py, drawSize, 0, Math.PI * 2);
                     ctx.fill();

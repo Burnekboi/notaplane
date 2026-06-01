@@ -27,21 +27,33 @@
                 overflow: hidden;
             }
 
-            canvas {
-                background: #0a3a4a;
-                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-                cursor: crosshair;
+            #bgCanvas, #gameCanvas, #uiCanvas {
+                position: absolute;
+                top: 0;
+                left: 0;
                 width: 100%;
                 height: 100%;
                 display: block;
+            }
+            #bgCanvas {
+                background: #0a3a4a;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            }
+            #gameCanvas {
+                cursor: crosshair;
+                background: transparent;
+            }
+            #uiCanvas {
+                pointer-events: none;
+                background: transparent;
             }
 
             /* Canvas wrapper for absolute positioning of overlay buttons */
 
             #gameWrap {
                 position: relative;
-                width: 800px;
-                height: 500px;
+                width: 100vw;
+                height: 100vh;
                 flex-shrink: 0;
                 line-height: 0;
                 transform-origin: center center;
@@ -503,7 +515,9 @@
                 <div class="loading-pct" id="loadingPct">0%</div>
                 <div class="loading-sub">Preparing the battlefield...</div>
             </div>
-            <canvas id="game"></canvas>
+            <canvas id="bgCanvas"></canvas>
+            <canvas id="gameCanvas"></canvas>
+            <canvas id="uiCanvas"></canvas>
             <a id="backBtn" href="dashboard.html">&#8592; BACK</a>
 
             <div id="hudOverlay">
@@ -564,9 +578,16 @@
         <audio id="bgMusic" src="sfx/game music.mp3" loop preload="auto"></audio>
 
         <script>
-            const canvas = document.getElementById("game");
+            const bgCanvas = document.getElementById("bgCanvas");
+            const gameCanvas = document.getElementById("gameCanvas");
+            const uiCanvas = document.getElementById("uiCanvas");
+            const canvas = gameCanvas;
 
-            const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+            const bgCtx = bgCanvas.getContext('2d', { alpha: false });
+            const ctx = gameCanvas.getContext('2d', { alpha: true, desynchronized: true });
+            const uiCtx = uiCanvas.getContext('2d', { alpha: true });
+
+            let bgDrawn = false;
 
             const hitCanvas = document.createElement('canvas');
             hitCanvas.width = 600;
@@ -586,8 +607,12 @@
 
             // ── Loading screen overlay ──────────────────────────────────────────
             // Canvas setup for game rendering (loading shown via DOM overlay)
-            canvas.width = 800;
-            canvas.height = 500;
+            bgCanvas.width = 800;
+            bgCanvas.height = 500;
+            gameCanvas.width = 800;
+            gameCanvas.height = 500;
+            uiCanvas.width = 800;
+            uiCanvas.height = 500;
 
             // ── Asset Preloading System ──────────────────────────────────────────
             // Shows the intro title image on the DOM overlay with progress bar,
@@ -4605,6 +4630,7 @@
             function resetGame() {
                 spawningPaused = false;
                 if (spawnStopTimer) { clearTimeout(spawnStopTimer); spawnStopTimer = null; }
+                bgDrawn = false;
 
                 // Clear entity arrays
                 bullets.length = 0;
@@ -6707,6 +6733,114 @@
 
             // ── Draw ──────────────────────────────────────────────────────────────────
 
+            function drawBg() {
+                if (bgDrawn) return;
+                if (cosmosImg.complete && cosmosImg.naturalWidth > 0) {
+                    bgCtx.drawImage(cosmosImg, 0, 0, W, H);
+                    bgDrawn = true;
+                }
+            }
+
+            function drawUi() {
+                if (popups.length === 0 && baseRewardPopups.length === 0 && refundPopups.length === 0) return;
+                uiCtx.clearRect(0, 0, W, H);
+                { const ctx = uiCtx;
+                    // ── Reward popups ──────────────────────────────────────────────
+                    const popupNow = performance.now();
+                    for (let i = popups.length - 1; i >= 0; i--) {
+                        const p = popups[i];
+                        const elapsed = popupNow - p.startTime;
+                        if (elapsed >= p.duration) {
+                            popups.splice(i, 1);
+                            continue;
+                        }
+                        const pScale = Math.min(1, elapsed / 300) * (elapsed < 300 ? 1.3 - 0.3 * elapsed / 300 : 1);
+                        const pAlpha = elapsed < p.duration - 500 ? 1 : Math.max(0, 1 - (elapsed - (p.duration - 500)) / 500);
+
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.scale(pScale, pScale);
+                        ctx.globalAlpha = pAlpha * 0.85;
+
+                        ctx.textAlign = "center";
+                        ctx.shadowColor = "#000";
+                        ctx.shadowBlur = 20;
+
+                        const rewardVal = parseFloat(p.text.replace(/,/g, ''));
+                        let rewardFontSize = 21;
+                        if (rewardVal >= 500) rewardFontSize = 63;
+                        else if (rewardVal >= 100) rewardFontSize = 42;
+                        ctx.font = `bold ${rewardFontSize}px Arial`;
+                        ctx.fillStyle = "#ffdd44";
+                        ctx.fillText(p.text, 0, 0);
+
+                        if (p.subText) {
+                            ctx.font = "bold 18px Arial";
+                            ctx.fillStyle = "#ffffff";
+                            ctx.fillText(p.subText, 0, 30);
+                        }
+
+                        ctx.shadowBlur = 0;
+                        ctx.restore();
+                    }
+
+                    // ── Base reward popups (above left textbox) ──────────────────────
+                    const bpNow = performance.now();
+                    const baseSz = 120;
+                    const txW = 74;
+                    const txH = 50;
+                    const txY = player.y + baseSz / 2 - txH - 12;
+                    const ltxX = player.x - baseSz / 2 - txW + 24;
+                    const bpX = ltxX + txW / 2;
+                    const bpY = txY - 10;
+
+                    for (let i = baseRewardPopups.length - 1; i >= 0; i--) {
+                        const bp = baseRewardPopups[i];
+
+                    // ── Refund popups (same position as reward popups) ──
+                    const rfNow = performance.now();
+                    for (let ri = refundPopups.length - 1; ri >= 0; ri--) {
+                        const rp = refundPopups[ri];
+                        const rpElapsed = rfNow - rp.startTime;
+                        if (rpElapsed >= rp.duration) {
+                            refundPopups.splice(ri, 1);
+                            continue;
+                        }
+                        const rpAlpha = rpElapsed < rp.duration - 400 ? 1 : Math.max(0, 1 - (rpElapsed - (rp.duration - 400)) / 400);
+                        const rpRise = Math.min(rpElapsed * 0.03, 20);
+                        ctx.save();
+                        ctx.globalAlpha = rpAlpha * 0.9;
+                        ctx.textAlign = "center";
+                        ctx.font = "16px Arial";
+                        ctx.fillStyle = "#66ffaa";
+                        ctx.shadowColor = "#000";
+                        ctx.shadowBlur = 8;
+                        ctx.fillText(rp.text, bpX, bpY - 32 - rpRise);
+                        ctx.shadowBlur = 0;
+                        ctx.restore();
+                    }
+                        const elapsed = bpNow - bp.startTime;
+                        if (elapsed >= bp.duration) {
+                            baseRewardPopups.splice(i, 1);
+                            continue;
+                        }
+                        const bpAlpha = elapsed < bp.duration - 400 ? 1 : Math.max(0, 1 - (elapsed - (bp.duration - 400)) / 400);
+                        const bpRise = Math.min(elapsed * 0.03, 20);
+
+                        ctx.save();
+                        ctx.globalAlpha = bpAlpha * 0.9;
+                        ctx.textAlign = "center";
+                        ctx.font = "18px Arial";
+                        ctx.fillStyle = "#ffdd44";
+                        ctx.shadowColor = "#000";
+                        ctx.shadowBlur = 8;
+                        ctx.fillText(bp.text, bpX, bpY - bpRise);
+                        ctx.shadowBlur = 0;
+                        ctx.restore();
+                    }
+                }
+            }
+
             function drawIntro() {
                 const introNow = performance.now();
                 const introElapsed = introNow - introStartTime;
@@ -6769,11 +6903,8 @@
                 }
 
                 layoutBaseHud();
+                drawBg();
                 ctx.clearRect(0, 0, W, H);
-
-                if (cosmosImg.complete && cosmosImg.naturalWidth > 0) {
-                    ctx.drawImage(cosmosImg, 0, 0, W, H);
-                }
 
                 ctx.save();
                 const shakeNow = performance.now();
@@ -9926,101 +10057,9 @@
                      ctx.restore();
                 }
 
-                // ── Reward popups ──────────────────────────────────────────────
-                const popupNow = performance.now();
-                for (let i = popups.length - 1; i >= 0; i--) {
-                    const p = popups[i];
-                    const elapsed = popupNow - p.startTime;
-                    if (elapsed >= p.duration) {
-                        popups.splice(i, 1);
-                        continue;
-                    }
-                    const pScale = Math.min(1, elapsed / 300) * (elapsed < 300 ? 1.3 - 0.3 * elapsed / 300 : 1);
-                    const pAlpha = elapsed < p.duration - 500 ? 1 : Math.max(0, 1 - (elapsed - (p.duration - 500)) / 500);
-
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.scale(pScale, pScale);
-                    ctx.globalAlpha = pAlpha * 0.85;
-
-                    ctx.textAlign = "center";
-                    ctx.shadowColor = "#000";
-                    ctx.shadowBlur = 20;
-
-                    const rewardVal = parseFloat(p.text.replace(/,/g, ''));
-                    let rewardFontSize = 21;
-                    if (rewardVal >= 500) rewardFontSize = 63;
-                    else if (rewardVal >= 100) rewardFontSize = 42;
-                    ctx.font = `bold ${rewardFontSize}px Arial`;
-                    ctx.fillStyle = "#ffdd44";
-                    ctx.fillText(p.text, 0, 0);
-
-                    if (p.subText) {
-                        ctx.font = "bold 18px Arial";
-                        ctx.fillStyle = "#ffffff";
-                        ctx.fillText(p.subText, 0, 30);
-                    }
-
-                    ctx.shadowBlur = 0;
-                    ctx.restore();
-                }
-
-                // ── Base reward popups (above left textbox) ──────────────────────
-                const bpNow = performance.now();
-                const baseSz = 120;
-                const txW = 74;
-                const txH = 50;
-                const txY = player.y + baseSz / 2 - txH - 12;
-                const ltxX = player.x - baseSz / 2 - txW + 24;
-                const bpX = ltxX + txW / 2;
-                const bpY = txY - 10;
-
-                for (let i = baseRewardPopups.length - 1; i >= 0; i--) {
-                    const bp = baseRewardPopups[i];
-
-                // ── Refund popups (same position as reward popups) ──
-                const rfNow = performance.now();
-                for (let ri = refundPopups.length - 1; ri >= 0; ri--) {
-                    const rp = refundPopups[ri];
-                    const rpElapsed = rfNow - rp.startTime;
-                    if (rpElapsed >= rp.duration) {
-                        refundPopups.splice(ri, 1);
-                        continue;
-                    }
-                    const rpAlpha = rpElapsed < rp.duration - 400 ? 1 : Math.max(0, 1 - (rpElapsed - (rp.duration - 400)) / 400);
-                    const rpRise = Math.min(rpElapsed * 0.03, 20);
-                    ctx.save();
-                    ctx.globalAlpha = rpAlpha * 0.9;
-                    ctx.textAlign = "center";
-                    ctx.font = "16px Arial";
-                    ctx.fillStyle = "#66ffaa";
-                    ctx.shadowColor = "#000";
-                    ctx.shadowBlur = 8;
-                    ctx.fillText(rp.text, bpX, bpY - 32 - rpRise);
-                    ctx.shadowBlur = 0;
-                    ctx.restore();
-                }
-                    const elapsed = bpNow - bp.startTime;
-                    if (elapsed >= bp.duration) {
-                        baseRewardPopups.splice(i, 1);
-                        continue;
-                    }
-                    const bpAlpha = elapsed < bp.duration - 400 ? 1 : Math.max(0, 1 - (elapsed - (bp.duration - 400)) / 400);
-                    const bpRise = Math.min(elapsed * 0.03, 20);
-
-                    ctx.save();
-                    ctx.globalAlpha = bpAlpha * 0.9;
-                    ctx.textAlign = "center";
-                    ctx.font = "18px Arial";
-                    ctx.fillStyle = "#ffdd44";
-                    ctx.shadowColor = "#000";
-                    ctx.shadowBlur = 8;
-                    ctx.fillText(bp.text, bpX, bpY - bpRise);
-                    ctx.shadowBlur = 0;
-                    ctx.restore();
-                }
-
                 ctx.restore();
+
+                drawUi();
             }
 
             // ── Thunder FX (Dragon Strike) ──────────────────────────────────────
@@ -10123,16 +10162,17 @@ const gameWrap = document.getElementById('gameWrap');
 let isLandscape = true;
 
 function resizeGame() {
-    const windowW = window.innerWidth;
-    const windowH = window.innerHeight;
-    const gameW = 800;
-    const gameH = 500;
+    const targetRatio = 800 / 500;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
 
-    // Calculate scale factor to fit the game in the viewport
-    const scale = Math.min(windowW / gameW, windowH / gameH);
-    
+    let scale = Math.min(windowWidth / 800, windowHeight / 500);
+
+    const gameWrap = document.getElementById("gameWrap");
     if (gameWrap) {
         gameWrap.style.transform = `scale(${scale})`;
+        gameWrap.style.width = '800px';
+        gameWrap.style.height = '500px';
     }
 }
 
@@ -10163,26 +10203,34 @@ function lockLandscape() {
             const twa = window.Telegram.WebApp;
             twa.ready();
             twa.expand();
-            twa.onEvent('viewportChanged', checkOrientation);
+            twa.onEvent('viewportChanged', () => {
+                checkOrientation();
+                resizeGame();
+            });
             return;
         }
     } catch (_) { /* WebApp methods may throw in restrictive environments */ }
     setTimeout(initTg, 50);
 })();
 
-// Initial check
+// Initial checks
 checkOrientation();
+resizeGame();
 // Attempt to lock orientation (gracefully fails if not permitted)
 lockLandscape();
 
 // Listen for device orientation changes
 window.addEventListener('orientationchange', () => {
     setTimeout(checkOrientation, 200);
+    setTimeout(resizeGame, 200);
     setTimeout(lockLandscape, 400);
 });
 
 // Listen for resize (covers desktop and mobile viewport changes)
-window.addEventListener('resize', checkOrientation);
+window.addEventListener('resize', () => {
+    checkOrientation();
+    resizeGame();
+});
 
             // Wait for assets to finish loading before starting the game loop
             function tryStartLoop() {

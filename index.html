@@ -571,7 +571,7 @@
             const hitCanvas = document.createElement('canvas');
             hitCanvas.width = 600;
             hitCanvas.height = 600;
-            const hitCtx = hitCanvas.getContext('2d', { alpha: true, desynchronized: true });
+            const hitCtx = hitCanvas.getContext('2d', { alpha: true });
 
             // ── Object pool helpers (reduce GC pressure) ─────────────────────────
             // Reuses inactive objects instead of splice+push churn.

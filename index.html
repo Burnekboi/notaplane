@@ -17,16 +17,14 @@
 
             body {
                 background: #000;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
                 width: 100vw;
                 height: 100vh;
-                height: 100dvh;
                 margin: 0;
                 padding: 0;
                 overflow: hidden;
+                overscroll-behavior: none;
+                -webkit-overflow-scrolling: none;
+                position: relative;
             }
 
             #bgCanvas, #gameCanvas, #uiCanvas {
@@ -36,10 +34,11 @@
                 width: 100%;
                 height: 100%;
                 display: block;
+                touch-action: none;
             }
             #bgCanvas {
                 background: #0a3a4a;
-                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+                image-rendering: auto;
             }
             #gameCanvas {
                 cursor: crosshair;
@@ -53,12 +52,12 @@
             /* Canvas wrapper for absolute positioning of overlay buttons */
 
             #gameWrap {
-                position: relative;
+                position: absolute;
                 width: 800px;
                 height: 500px;
-                flex-shrink: 0;
                 line-height: 0;
                 transform-origin: center center;
+                overflow: hidden;
             }
 
             #backBtn {
@@ -10132,45 +10131,36 @@
                 requestAnimationFrame(loop);
             }
 
-// ── Landscape Orientation & Resizing System ──────────────────────────────────────────
-// Detects device orientation, scales the game to fit, and handles Telegram WebApp integration.
+// ── Landscape Orientation & Cover-Scaling System ─────────────────────────────────────
+// Uses uniform cover-scaling (Math.max) so the game fills the entire viewport without
+// borders or distortion. Edges are cropped symmetrically via overflow:hidden on body.
 
 const orientationOverlay = document.getElementById('orientationOverlay');
 const gameWrap = document.getElementById('gameWrap');
 let isLandscape = true;
 
 function resizeGame() {
-    const targetRatio = 800 / 500;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-
-    let scale = Math.min(windowWidth / 800, windowHeight / 500);
-
-    const gameWrap = document.getElementById("gameWrap");
+    var ww = window.innerWidth;
+    var wh = window.innerHeight;
+    var scale = Math.max(ww / 800, wh / 500);
     if (gameWrap) {
-        gameWrap.style.transform = `scale(${scale})`;
-        gameWrap.style.width = '800px';
-        gameWrap.style.height = '500px';
+        gameWrap.style.transform = 'scale(' + scale + ')';
+        gameWrap.style.left = ((ww - 800) / 2) + 'px';
+        gameWrap.style.top = ((wh - 500) / 2) + 'px';
     }
 }
 
 function checkOrientation() {
     isLandscape = window.innerWidth >= window.innerHeight;
-    
     if (orientationOverlay) {
         orientationOverlay.classList.toggle('active', !isLandscape);
     }
-    
-    if (isLandscape) {
-        resizeGame();
-    }
+    if (isLandscape) resizeGame();
 }
 
 function lockLandscape() {
     if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {
-            // Fallback: overlay handles the rotation hint via orientationOverlay
-        });
+        screen.orientation.lock('landscape').catch(function () {});
     }
 }
 
@@ -10178,34 +10168,40 @@ function lockLandscape() {
 (function initTg() {
     try {
         if (window.Telegram && window.Telegram.WebApp) {
-            const twa = window.Telegram.WebApp;
+            var twa = window.Telegram.WebApp;
             twa.ready();
             twa.expand();
-            twa.onEvent('viewportChanged', () => {
+            twa.setHeaderColor('#000000');
+            twa.setBackgroundColor('#000000');
+            twa.onEvent('viewportChanged', function () {
                 checkOrientation();
                 resizeGame();
             });
             return;
         }
-    } catch (_) { /* WebApp methods may throw in restrictive environments */ }
+    } catch (_) {}
     setTimeout(initTg, 50);
 })();
+
+// Prevent touch-scroll / rubber-banding on mobile
+document.addEventListener('touchmove', function (e) {
+    if (e.target.closest('#gameWrap')) e.preventDefault();
+}, { passive: false });
 
 // Initial checks
 checkOrientation();
 resizeGame();
-// Attempt to lock orientation (gracefully fails if not permitted)
 lockLandscape();
 
 // Listen for device orientation changes
-window.addEventListener('orientationchange', () => {
+window.addEventListener('orientationchange', function () {
     setTimeout(checkOrientation, 200);
     setTimeout(resizeGame, 200);
     setTimeout(lockLandscape, 400);
 });
 
 // Listen for resize (covers desktop and mobile viewport changes)
-window.addEventListener('resize', () => {
+window.addEventListener('resize', function () {
     checkOrientation();
     resizeGame();
 });

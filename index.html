@@ -708,12 +708,20 @@
             ];
 
             function startGameAfterPreload() {
-                // Hide the loading overlay
                 const overlay = document.getElementById('loadingOverlay');
                 if (overlay) overlay.classList.add('hidden');
-                // Start background music (deferred like before)
-                if (typeof requestIdleCallback !== 'undefined') {
-                    requestIdleCallback(() => startBgMusic(), { timeout: 3000 });
+                // If the user came from the Dashboard PLAY button, start music
+                // right away instead of deferring.
+                var fromDash = new URLSearchParams(location.search).get('fromDashboard');
+                if (!fromDash) {
+                    var _t = sessionStorage.getItem('_playTs');
+                    if (_t && Date.now() - Number(_t) < 5000) fromDash = '1';
+                }
+                if (fromDash) {
+                    sessionStorage.removeItem('_playTs');
+                    startBgMusic();
+                } else if (typeof requestIdleCallback !== 'undefined') {
+                    requestIdleCallback(function () { startBgMusic(); }, { timeout: 3000 });
                 } else {
                     setTimeout(startBgMusic, 1500);
                 }

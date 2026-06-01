@@ -14,15 +14,6 @@ const WEBAPP_URL = (process.env.WEBAPP_URL || RAILWAY_DOMAIN || 'http://localhos
 
 console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 
-function makeGameUrl(user) {
-  const token = jwt.sign(
-    { userId: user._id, telegramId: user.telegram_id },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' },
-  );
-  return `${WEBAPP_URL}?token=${token}`;
-}
-
 function makeDashUrl(user) {
   const token = jwt.sign(
     { userId: user._id, telegramId: user.telegram_id },
@@ -60,7 +51,6 @@ function initBot() {
         `💰 SK Balance: <b>${balance.toLocaleString()}</b>\n\n` +
         `Blast through waves of cosmic enemies and earn rewards!`,
         Markup.inlineKeyboard([
-          Markup.button.webApp('🎮 Play Game', makeGameUrl(user)),
           Markup.button.webApp('📊 Dashboard', makeDashUrl(user)),
         ]),
       );
@@ -74,20 +64,8 @@ function initBot() {
     ctx.reply(
       'Commands:\n' +
       '/start - Show main menu\n' +
-      '/play - Launch the game\n' +
       '/balance - Check your SK balance\n' +
       '/help - Show this message'
-    );
-  });
-
-  bot.command('play', async (ctx) => {
-    let user = await User.findOne({ telegram_id: ctx.from.id });
-    if (!user) return ctx.reply('Use /start first to register.');
-    ctx.replyWithHTML(
-      `🎮 Ready to play?`,
-      Markup.inlineKeyboard([
-        Markup.button.webApp('🎮 Play Game', makeGameUrl(user)),
-      ]),
     );
   });
 

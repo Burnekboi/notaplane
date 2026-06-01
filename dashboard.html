@@ -151,7 +151,7 @@
                 </div>
             </div>
             <div id="buttons">
-                <a class="btn" href="index.html">PLAY</a>
+                <a class="btn" href="index.html?fromDashboard=1" id="playBtn">PLAY</a>
                 <button class="btn" id="leaderboardBtn">LEADERBOARD</button>
                 <button class="btn" id="achievementsBtn">ACHIEVEMENTS</button>
                 <button class="btn" id="earnBtn">EARN</button>
@@ -770,6 +770,10 @@
             }
 
             initAuth();
+
+            document.getElementById('playBtn').addEventListener('click', function () {
+                sessionStorage.setItem('_playTs', Date.now());
+            });
         </script>
         <script>
             const ACH_FRAMES = {

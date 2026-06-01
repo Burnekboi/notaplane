@@ -911,16 +911,14 @@
             const W = canvas.width,
                 H = canvas.height;
 
-            const player = { x: W / 2, y: H - 40, w: 50, h: 30 };
+            const player = { x: 140, y: H - 40, w: 50, h: 30 };
 
-            const ACTIVE_PLAYER_INDEX = 4;
+            const ACTIVE_PLAYER_INDEX = 0;
             const basePositions = [
-                { x: 140, y: 40 },   // 0: top-left (vacant)
-                { x: 400, y: 40 },   // 1: top-center (vacant)
-                { x: 660, y: 40 },   // 2: top-right (vacant)
-                { x: 140, y: 460 },  // 3: bottom-left (vacant)
-                { x: 400, y: 460 },  // 4: bottom-center (ACTIVE PLAYER)
-                { x: 660, y: 460 },  // 5: bottom-right (vacant)
+                { x: 140, y: 460 },  // 0: bottom-left  (PLAYER)
+                { x: 660, y: 460 },  // 1: bottom-right (vacant)
+                { x: 140, y: 40 },   // 2: top-left     (vacant)
+                { x: 660, y: 40 },   // 3: top-right    (vacant)
             ];
 
             const bullets = [];
@@ -4667,7 +4665,7 @@
                 introStartTime = performance.now();
 
                 // Reset player position
-                player.x = W / 2;
+                player.x = basePositions[ACTIVE_PLAYER_INDEX].x;
 
                 // Reset balance / economy
                 balance = 0;
@@ -9209,7 +9207,7 @@
                 for (let i = 0; i < basePositions.length; i++) {
                     if (i === ACTIVE_PLAYER_INDEX) continue;
                     const bp = basePositions[i];
-                    const isTop = i < 3;
+                    const isTop = bp.y < 250;
                     if (baseCannonImg.complete && baseCannonImg.naturalWidth > 0) {
                         ctx.save();
                         ctx.translate(bp.x, bp.y);

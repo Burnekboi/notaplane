@@ -51,7 +51,7 @@ function initBot() {
         `💰 SK Balance: <b>${balance.toLocaleString()}</b>\n\n` +
         `Blast through waves of cosmic enemies and earn rewards!`,
         Markup.inlineKeyboard([
-          Markup.button.webApp('📊 Dashboard', makeDashUrl(user)),
+          Markup.button.webApp('🎮 Play', makeDashUrl(user)),
         ]),
       );
     } catch (err) {

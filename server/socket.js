@@ -121,6 +121,71 @@ function initSocket(httpServer) {
       });
     });
 
+    // ── Find or Create Room (auto-matchmaking) ──────────────────────────────
+    socket.on('findOrCreateRoom', (data, ack) => {
+      data = data || {};
+      // If already in a room, return current state (reconnect case)
+      if (currentRoom) {
+        const room = getRoom(currentRoom);
+        if (room) {
+          const player = room.players.find(p => p.socketId === socket.id);
+          if (player) {
+            if (typeof ack === 'function') ack({
+              ok: true,
+              code: room.code,
+              seatIndex: player.seatIndex,
+              isHost: room.hostId === socket.id,
+              players: room.players.map(p => ({ seatIndex: p.seatIndex, name: p.name })),
+            });
+            return;
+          }
+        }
+      }
+
+      // Find a room with a vacant seat to auto-join
+      for (const [code, room] of rooms) {
+        if (room.players.length < MAX_PLAYERS) {
+          const seat = findNextSeat(room);
+          if (seat !== -1) {
+            room.players.push({ socketId: socket.id, seatIndex: seat, name: data.name || 'Player' });
+            socket.join(room.code);
+            currentRoom = room.code;
+
+            if (typeof ack === 'function') ack({
+              ok: true,
+              code: room.code,
+              seatIndex: seat,
+              isHost: false,
+              players: room.players.map(p => ({ seatIndex: p.seatIndex, name: p.name })),
+            });
+
+            socket.to(room.code).emit('playerJoined', {
+              seatIndex: seat,
+              name: data.name || 'Player',
+              players: room.players.map(p => ({ seatIndex: p.seatIndex, name: p.name })),
+            });
+            return;
+          }
+        }
+      }
+
+      // No vacant seat found — create a new room
+      const room = createRoom();
+      room.players.push({ socketId: socket.id, seatIndex: 0, name: data.name || 'Player' });
+      room.hostId = socket.id;
+      room.state = 'waiting';
+      socket.join(room.code);
+      currentRoom = room.code;
+
+      if (typeof ack === 'function') ack({
+        ok: true,
+        code: room.code,
+        seatIndex: 0,
+        isHost: true,
+        players: room.players.map(p => ({ seatIndex: p.seatIndex, name: p.name })),
+      });
+    });
+
     // ── Leave Room ───────────────────────────────────────────────────────────
     function leaveRoom() {
       if (!currentRoom) return;

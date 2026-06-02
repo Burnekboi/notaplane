@@ -10127,24 +10127,40 @@
 
             function drawRemotePlayers() {
                 if (!mpRoom || mpPlayers.length === 0) return;
-                var colors = ['#ff4444', '#44ff44', '#4488ff', '#ffaa00'];
+                var baseSize = 120;
                 for (var i = 0; i < mpPlayers.length; i++) {
                     var p = mpPlayers[i];
                     if (!p || p.seatIndex === mpSeat) continue;
                     var bp = basePositions[p.seatIndex];
                     if (!bp) continue;
                     var angle = p.cannonAngle || 0;
-                    ctx.save();
-                    ctx.translate(bp.x, bp.y);
-                    ctx.rotate(angle);
-                    ctx.fillStyle = colors[p.seatIndex % colors.length];
-                    ctx.shadowColor = colors[p.seatIndex % colors.length];
-                    ctx.shadowBlur = 8;
-                    ctx.fillRect(0, -6, 32, 12);
-                    ctx.shadowBlur = 0;
-                    ctx.restore();
+
+                    // Draw base cannon (static)
+                    if (baseCannonImg.complete && baseCannonImg.naturalWidth > 0) {
+                        ctx.drawImage(baseCannonImg, bp.x - baseSize / 2, bp.y - baseSize / 2, baseSize, baseSize);
+                    } else {
+                        ctx.fillStyle = "#2ed573";
+                        ctx.beginPath();
+                        ctx.arc(bp.x, bp.y, 20, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Draw rotating cannon (sprite)
+                    if (cannonSheetImg.complete && cannonSheetImg.naturalWidth > 0) {
+                        var fw = cannonSheetImg.naturalWidth / CANNON_COLS;
+                        var fh = cannonSheetImg.naturalHeight / CANNON_ROWS;
+                        var col = cannonFrame % CANNON_COLS;
+                        var row = Math.floor(cannonFrame / CANNON_COLS);
+                        var cannonSize = 100;
+                        ctx.save();
+                        ctx.translate(bp.x, bp.y);
+                        ctx.rotate(angle + Math.PI / 2);
+                        ctx.drawImage(cannonSheetImg, col * fw, row * fh, fw, fh, -cannonSize / 2, -cannonSize / 2, cannonSize, cannonSize);
+                        ctx.restore();
+                    }
+
                     // Name label
-                    ctx.fillStyle = colors[p.seatIndex % colors.length];
+                    ctx.fillStyle = '#fff';
                     ctx.font = 'bold 10px Impact,Arial Black,sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'bottom';
@@ -10443,7 +10459,7 @@ window.addEventListener('resize', () => {
                         var by = seat.y + Math.sin(angle) * 20;
                         var bvx = Math.cos(angle) * 8;
                         var bvy = Math.sin(angle) * 8;
-                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, life: 0, maxLife: 120 });
+                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, r: 5, bounces: 0, bet: 0 });
                     } else if (data.type === 'aim') {
                         // Another player moved their aim — update their angle
                         var p = mpPlayers.find(function(x) { return x.seatIndex === data.seatIndex; });

@@ -5772,6 +5772,13 @@
                         continue;
                     }
 
+                    // Remote missiles: remove when off-screen, no refund
+
+                    if (m.fromRemote && (m.x < -50 || m.x > W + 50 || m.y < -50 || m.y > H + 50)) {
+                        nukeMissiles.splice(i, 1);
+                        continue;
+                    }
+
                     // Off-screen — refund the cost and remove
 
                     if (
@@ -9200,8 +9207,9 @@
 
                 bullets.forEach((b) => {
                     if (!b.active) return;
+                    ctx.save();
+                    if (b.fromRemote) ctx.globalAlpha = 0.35;
                     if (bulletImg.complete && bulletImg.naturalWidth > 0) {
-                        ctx.save();
 
                         ctx.translate(b.x, b.y);
 
@@ -9210,8 +9218,6 @@
                         ctx.rotate(Math.atan2(b.vy, b.vx) + Math.PI / 2);
 
                         ctx.drawImage(bulletImg, -17.5, -27.5, 35, 55);
-
-                        ctx.restore();
                     } else {
                         ctx.fillStyle = "#eccc68";
 
@@ -9219,6 +9225,7 @@
                         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                         ctx.fill();
                     }
+                    ctx.restore();
                 });
 
                 lightningSparks.forEach((p) => {
@@ -9638,6 +9645,7 @@
                     const mAngle = Math.atan2(m.vy, m.vx);
 
                     ctx.save();
+                    if (m.fromRemote) ctx.globalAlpha = 0.35;
 
                     ctx.translate(m.x, m.y);
 
@@ -9932,13 +9940,14 @@
                             Math.sin(Math.min(progress, 0.75) * Math.PI) *
                                 0.12) *
                         1.5;
-                    const alpha =
+                    var alpha =
                         thunder.frame >= THUNDER_EXPLOSION_START
                             ? 1 -
                               ((thunder.frame - THUNDER_EXPLOSION_START) /
                                   THUNDER_EXPLOSION_FRAMES) *
                                   0.25
                             : 0.97;
+                    if (thunder.fromRemote) alpha *= 0.3;
 
                     const fw = thunderImg.naturalWidth / THUNDER_COLS;
                     const fh = thunderImg.naturalHeight / THUNDER_ROWS;
@@ -10156,6 +10165,21 @@
                         ctx.translate(bp.x, bp.y);
                         ctx.rotate(angle + Math.PI / 2);
                         ctx.drawImage(cannonSheetImg, col * fw, row * fh, fw, fh, -cannonSize / 2, -cannonSize / 2, cannonSize, cannonSize);
+                        ctx.restore();
+                    }
+
+                    // ── Lightning ball (electric ball.png) ────────────────────
+                    if (lightningSheet && lightningSheet.complete && lightningSheet.naturalWidth > 0 && lightningFrames.length > 0) {
+                        var lf = lightningFrames[lightningFrame];
+                        var fr = lf.frame, sss = lf.spriteSourceSize, ss = lf.sourceSize;
+                        var scale = LIGHTNING_SIZE / ss.w;
+                        var ballCX = bp.x;
+                        var ballCY = bp.y - 45 - LIGHTNING_SIZE * 0.35;
+                        ctx.save();
+                        ctx.globalAlpha = 0.35;
+                        ctx.shadowColor = 'rgba(255,180,80,0.2)';
+                        ctx.shadowBlur = 4;
+                        ctx.drawImage(lightningSheet, fr.x, fr.y, fr.w, fr.h, ballCX - LIGHTNING_SIZE / 2 + sss.x * scale, ballCY - LIGHTNING_SIZE / 2 + sss.y * scale, fr.w * scale, fr.h * scale);
                         ctx.restore();
                     }
 
@@ -10459,11 +10483,29 @@ window.addEventListener('resize', () => {
                         var by = seat.y + Math.sin(angle) * 20;
                         var bvx = Math.cos(angle) * 8;
                         var bvy = Math.sin(angle) * 8;
-                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, r: 5, bounces: 0, bet: 0 });
+                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, r: 5, bounces: 0, bet: 0, fromRemote: true });
                     } else if (data.type === 'aim') {
                         // Another player moved their aim — update their angle
                         var p = mpPlayers.find(function(x) { return x.seatIndex === data.seatIndex; });
                         if (p) p.cannonAngle = data.angle;
+                    } else if (data.type === 'fireNuke') {
+                        // Another player fired a nuke missile
+                        var seatIdx = data.seatIndex;
+                        var seat = basePositions[seatIdx];
+                        if (!seat) return;
+                        var angle = data.angle || 0;
+                        var speed = 8;
+                        var tipOffset = 75 * 0.65;
+                        var tipX = seat.x + Math.cos(angle) * tipOffset;
+                        var tipY = seat.y + Math.sin(angle) * tipOffset;
+                        nukeMissiles.push({ x: tipX, y: tipY, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, target: null, bet: 0, fromRemote: true });
+                    } else if (data.type === 'fireDragon') {
+                        // Another player used dragon strike
+                        var cx = data.targetX;
+                        var cy = data.targetY;
+                        if (cx !== undefined && cy !== undefined && typeof THUNDER_TOTAL_MS !== 'undefined') {
+                            thunderAttacks.push({ x: cx, y: cy, frame: 0, frameTimer: 0, ttl: THUNDER_TOTAL_MS, rotation: Math.random() * Math.PI * 2, fromRemote: true });
+                        }
                     }
                 });
 
@@ -10529,6 +10571,27 @@ window.addEventListener('resize', () => {
                 if (mpRoom) {
                     var angle = Math.atan2(mouseY - player.y, mouseX - player.x);
                     mpSendAction('fire', { angle: angle });
+                }
+            };
+
+            // Wrap nuke missile fire to relay to other players
+            var _origFireNukeAt = fireNukeAt;
+            fireNukeAt = function(target) {
+                _origFireNukeAt(target);
+                if (mpRoom && target) {
+                    var dx = target.x - player.x;
+                    var dy = target.y - player.y;
+                    var angle = Math.atan2(dy, dx);
+                    mpSendAction('fireNuke', { targetX: target.x, targetY: target.y, angle: angle });
+                }
+            };
+
+            // Wrap dragon strike to relay to other players
+            var _origFireDragonStrikeAt = fireDragonStrikeAt;
+            fireDragonStrikeAt = function(target, ts) {
+                _origFireDragonStrikeAt(target, ts);
+                if (mpRoom && target) {
+                    mpSendAction('fireDragon', { targetX: target.x, targetY: target.y });
                 }
             };
 

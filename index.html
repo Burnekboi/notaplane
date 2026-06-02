@@ -4785,6 +4785,7 @@
             let spawningPaused = false;
 
             function scheduleReset() {
+                if (mpRoom && !mpIsHost) return; // Only host manages game lifecycle
                 if (resetTimer) clearTimeout(resetTimer);
                 if (spawnStopTimer) clearTimeout(spawnStopTimer);
                 spawningPaused = false;
@@ -10529,8 +10530,6 @@ window.addEventListener('resize', () => {
                         socket.emit('hostState', {
                             enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
                         });
-                    }, 100);
-                });
                     }, 100);
                 });
                 socket.on('roomClosed', function() {

@@ -2001,9 +2001,6 @@
 
                 // rtp.totalSpent += betAmount * 4; // already added 1 betAmount in spend(), add 4 more
 
-                balance -= betAmount * NUKE_STRIKE_COST_MULTIPLIER;
-                sessionTotalBets += betAmount * NUKE_STRIKE_COST_MULTIPLIER;
-
                 critState.onShot(performance.now());
                 playMissileFireSound();
             }
@@ -2689,9 +2686,6 @@
                 const len = Math.sqrt(dx * dx + dy * dy) || 1;
 
                 rtp.spend();
-
-                balance -= betAmount;
-                sessionTotalBets += betAmount;
 
                 critState.onShot(performance.now());
 
@@ -5689,15 +5683,15 @@
                         if (nukeLanded && !blocked) {
                             hitTarget._payoutBet = m.bet;
                             hitTarget.hp -= finalDmg;
+                            // Deduct nuke cost when missile hits an enemy
+                            balance -= betAmount * NUKE_STRIKE_COST_MULTIPLIER;
+                            sessionTotalBets += betAmount * NUKE_STRIKE_COST_MULTIPLIER;
                         }
 
                         // Nuke RTP miss — refund the cost
                         if (!nukeLanded) {
                             const refundNuke = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
-                            balance += refundNuke;
                             rtp.totalSpent -= betAmount * 1;
-                            sessionTotalBets -= betAmount * 1;
-                            if (sessionTotalBets < 0) sessionTotalBets = 0;
                             if (refundPopups.length < MAX_REFUND_POPUPS) {
                                 refundPopups.push({
                                     text: "MISS REFUND +" + refundNuke.toString(),
@@ -5763,12 +5757,7 @@
                         m.y > H + 50
                     ) {
                         const refundAmount = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
-                        balance += refundAmount;
-                        
                         rtp.totalSpent -= betAmount * 1; // reverse only 1 shot worth (not 5) spend
-                        sessionTotalBets -= betAmount * 1;
-                        if (sessionTotalBets < 0) sessionTotalBets = 0;
-                        
                         nukeMissiles.splice(i, 1);
                         
                         if (refundPopups.length < MAX_REFUND_POPUPS) {
@@ -6110,8 +6099,6 @@
 
                                 missileState.onShot();
 
-                                balance -= betAmount; // cost of shot
-
                                 // D3 is invulnerable while in special states (spinning, bouncing, exploding)
                                 if (
                                     autoTarget.isD3 &&
@@ -6330,10 +6317,7 @@
                     // Track bounces: after 4 bounces, consider wasted and refund
                     if (b.bounces > 4) {
                         const refundAmt = b.bet;
-                        balance += refundAmt;
                         rtp.totalSpent -= refundAmt;
-                        sessionTotalBets -= refundAmt;
-                        if (sessionTotalBets < 0) sessionTotalBets = 0;
                         b.active = false;
                         if (refundPopups.length < MAX_REFUND_POPUPS) {
                             refundPopups.push({
@@ -6652,6 +6636,10 @@
 
                             b.active = false;
 
+                            // Deduct bet cost when bullet hits an enemy
+                            balance -= betAmount;
+                            sessionTotalBets += betAmount;
+
                             processBossHit(e, ts);
 
                             const roll = rtp.rollHit(e.tierIndex, !!e.isBoss);
@@ -6752,7 +6740,6 @@
                                                                     } else {
                                 // RTP miss — refund the bet
                                 const refundAmt = b.bet;
-                                balance += refundAmt;
                                 rtp.totalSpent -= refundAmt;
                                 sessionTotalBets -= refundAmt;
                                 if (sessionTotalBets < 0) sessionTotalBets = 0;

@@ -6755,11 +6755,11 @@
             // ── Draw ──────────────────────────────────────────────────────────────────
 
             function drawBg() {
-                // Apply game-space transform (required even when bg is already drawn)
+                // Apply game-space transform (used every frame)
                 bgCtx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
 
                 if (!bgDrawn && cosmosImg.complete && cosmosImg.naturalWidth > 0) {
-                    // Clear full canvas with black (for letterbox areas), then draw background
+                    // Clear full canvas with black (for letterbox areas), then draw cosmos
                     bgCtx.setTransform(1, 0, 0, 1, 0, 0);
                     bgCtx.fillStyle = '#000';
                     bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
@@ -6945,11 +6945,9 @@
 
                 layoutBaseHud();
                 drawBg();
-                // Reset transform and clear full canvas (incl. letterbox)
+                // Clear game canvas to transparent so bgCanvas (cosmos) shows through
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#000';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 // Apply game-space transform
                 ctx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);

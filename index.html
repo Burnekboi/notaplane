@@ -5640,6 +5640,20 @@
                             hitTarget.hp -= finalDmg;
                         }
 
+                        // Nuke RTP miss — refund the cost
+                        if (!nukeLanded) {
+                            const refundNuke = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
+                            balance += refundNuke;
+                            rtp.totalSpent -= betAmount * 1;
+                            if (refundPopups.length < MAX_REFUND_POPUPS) {
+                                refundPopups.push({
+                                    text: "MISS REFUND +" + refundNuke.toString(),
+                                    startTime: performance.now(),
+                                    duration: 2000,
+                                });
+                            }
+                        }
+
                         if (explosionFX.length < MAX_EXPLOSION_FX) {
                         const fx = poolNext(explosionFX); fx.active = true; fx.x = hitTarget.x; fx.y = hitTarget.y; fx.alpha = 1.0; fx.radius = 40;
                         }
@@ -6678,8 +6692,21 @@
                                 } else if (e.isBoss) {
                                     bossState.bossHp = e.hp;
                                 }
-                            } else if (e.isBoss) {
-                                bossState.hitStartTime = null;
+                                                                    } else {
+                                // RTP miss — refund the bet
+                                const refundAmt = b.bet;
+                                balance += refundAmt;
+                                rtp.totalSpent -= refundAmt;
+                                if (refundPopups.length < MAX_REFUND_POPUPS) {
+                                    refundPopups.push({
+                                        text: "MISS REFUND +" + refundAmt.toString(),
+                                        startTime: performance.now(),
+                                        duration: 2000,
+                                    });
+                                }
+                                if (e.isBoss) {
+                                    bossState.hitStartTime = null;
+                                }
                             }
 
                             break;

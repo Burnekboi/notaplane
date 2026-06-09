@@ -2739,6 +2739,8 @@
 
                 const len = Math.sqrt(dx * dx + dy * dy) || 1;
 
+                // Guest in multiplayer: don't charge balance/rtp locally — host handles it
+                if (!mpRoom || mpIsHost) {
                 rtp.spend();
 
                 balance -= betAmount;
@@ -2746,6 +2748,7 @@
                 critState.onShot(performance.now());
 
                 missileState.onShot();
+                }
 
                 playBulletFireSound();
 
@@ -6137,6 +6140,13 @@
                                     mpSendAction('fireAuto', { targetX: autoTarget.x, targetY: autoTarget.y });
                                 }
 
+                                // Trigger red flash hit effect on lightning touch (even if blocked or misses)
+
+                                autoTarget.hitEffect = 1.0;
+
+                                // Guest: auto damage is processed by host — skip local damage processing
+                                if (!mpRoom || mpIsHost) {
+
                                 rtp.spend();
 
                                 critState.onShot(ts);
@@ -6144,10 +6154,6 @@
                                 missileState.onShot();
 
                                 balance -= betAmount; // cost of shot
-
-                                // Trigger red flash hit effect on lightning touch (even if blocked or misses)
-
-                                autoTarget.hitEffect = 1.0;
 
                                 // D3 is invulnerable while in special states (spinning, bouncing, exploding)
                                 if (
@@ -6305,6 +6311,8 @@
                                         bossState.hitStartTime = null;
                                     }
                                 } // end else (not dying)
+
+                                } // end single/multi host check
                             }
                         }
                     }
@@ -6685,6 +6693,11 @@
                             spawnBulletHit(b.x, b.y);
 
                             b.active = false;
+
+                            // Guest skips all bullet damage in multiplayer — host is authoritative
+                            if (mpRoom && !mpIsHost) {
+                                break;
+                            }
 
                             processBossHit(e, ts);
 
@@ -10199,30 +10212,6 @@
                         ctx.restore();
                     }
 
-                    // ── Remote auto beams (fading lightning bolts) ────────────
-                    var now = performance.now();
-                    for (var bi = remoteBeams.length - 1; bi >= 0; bi--) {
-                        var rb = remoteBeams[bi];
-                        if (!rb || !rb.fromX) continue;
-                        var elapsed = now - rb.createdAt;
-                        if (elapsed > 230) { remoteBeams.splice(bi, 1); continue; }
-                        var bA = 0.35 * (1 - elapsed / 230);
-                        var dx = rb.toX - rb.fromX, dy = rb.toY - rb.fromY;
-                        var dist = Math.hypot(dx, dy);
-                        if (dist < 1) continue;
-                        ctx.save();
-                        ctx.globalAlpha = 0.25 * bA;
-                        ctx.lineCap = 'round';
-                        ctx.strokeStyle = 'rgba(255,200,100,0.55)';
-                        ctx.lineWidth = 6;
-                        ctx.beginPath(); ctx.moveTo(rb.fromX, rb.fromY); ctx.lineTo(rb.toX, rb.toY); ctx.stroke();
-                        ctx.strokeStyle = '#fff';
-                        ctx.globalAlpha = bA;
-                        ctx.lineWidth = 1.5;
-                        ctx.beginPath(); ctx.moveTo(rb.fromX, rb.fromY); ctx.lineTo(rb.toX, rb.toY); ctx.stroke();
-                        ctx.restore();
-                    }
-
                     // Name label
                     ctx.fillStyle = '#fff';
                     ctx.font = 'bold 10px Impact,Arial Black,sans-serif';
@@ -10232,6 +10221,20 @@
                     ctx.shadowBlur = 4;
                     ctx.fillText(p.name, bp.x, bp.y - 24);
                     ctx.shadowBlur = 0;
+                }
+
+                // ── Remote auto beams (procedural lightning bolts) ────────────
+                var now = performance.now();
+                for (var bi = remoteBeams.length - 1; bi >= 0; bi--) {
+                    var rb = remoteBeams[bi];
+                    if (!rb || !rb.fromX) continue;
+                    var elapsed = now - rb.createdAt;
+                    if (elapsed > 230) { remoteBeams.splice(bi, 1); continue; }
+                    var bA = 0.35 * (1 - elapsed / 230);
+                    ctx.save();
+                    ctx.globalAlpha = bA;
+                    drawProceduralBolt(rb.fromX, rb.fromY, rb.toX, rb.toY, 'rgba(255,200,100,0.55)', '#fff');
+                    ctx.restore();
                 }
             }
 
@@ -10458,8 +10461,9 @@ window.addEventListener('resize', () => {
                         if (!socket || !mpRoom) return;
                         socket.emit('hostState', {
                             enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
+                            balance: balance,
                         });
-                    }, 100);
+                    }, 50);
                 }
             }
 
@@ -10502,8 +10506,9 @@ window.addEventListener('resize', () => {
                         if (!socket || !mpRoom) return;
                         socket.emit('hostState', {
                             enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
+                            balance: balance,
                         });
-                    }, 100);
+                    }, 50);
                 });
                 socket.on('roomClosed', function() {
                     mpRoom = null;
@@ -10526,7 +10531,7 @@ window.addEventListener('resize', () => {
                         var by = seat.y + Math.sin(angle) * 20;
                         var bvx = Math.cos(angle) * 8;
                         var bvy = Math.sin(angle) * 8;
-                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, r: 5, bounces: 0, bet: 0, fromRemote: true });
+                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, r: 5, bounces: 0, bet: betAmount, fromRemote: true });
                     } else if (data.type === 'aim') {
                         // Another player moved their aim — update their angle
                         var p = mpPlayers.find(function(x) { return x.seatIndex === data.seatIndex; });
@@ -10541,7 +10546,7 @@ window.addEventListener('resize', () => {
                         var tipOffset = 75 * 0.65;
                         var tipX = seat.x + Math.cos(angle) * tipOffset;
                         var tipY = seat.y + Math.sin(angle) * tipOffset;
-                        nukeMissiles.push({ x: tipX, y: tipY, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, target: null, bet: 0, fromRemote: true });
+                        nukeMissiles.push({ x: tipX, y: tipY, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, target: null, bet: betAmount * NUKE_STRIKE_COST_MULTIPLIER, fromRemote: true });
                     } else if (data.type === 'fireDragon') {
                         // Another player used dragon strike
                         var cx = data.targetX;
@@ -10558,6 +10563,85 @@ window.addEventListener('resize', () => {
                         var ty = data.targetY;
                         if (tx !== undefined && ty !== undefined) {
                             remoteBeams.push({ fromX: seat.x, fromY: seat.y - 45 - LIGHTNING_SIZE * 0.35, toX: tx, toY: ty, createdAt: performance.now() });
+                            // Host processes damage from remote auto shots
+                            if (mpIsHost && enemies.length > 0) {
+                                var targetEnemy = null;
+                                var closestDist = Infinity;
+                                for (var ei = 0; ei < enemies.length; ei++) {
+                                    var e = enemies[ei];
+                                    if (!e.active || e.state === 'dying' || e.state === 'chaining' || e.state === 'detonating') continue;
+                                    var d = Math.hypot(e.x - tx, e.y - ty);
+                                    if (d < closestDist) {
+                                        closestDist = d;
+                                        targetEnemy = e;
+                                    }
+                                }
+                                if (targetEnemy && closestDist < 120) {
+                                    var now = performance.now();
+                                    rtp.spend();
+                                    critState.onShot(now);
+                                    missileState.onShot();
+                                    balance -= betAmount;
+                                    targetEnemy.hitEffect = 1.0;
+                                    if (!(targetEnemy.isD3 && targetEnemy.state !== 'normal') && !(targetEnemy.isD4 && targetEnemy.state !== 'normal')) {
+                                        processBossHit(targetEnemy, now);
+                                        var roll = rtp.rollHit(targetEnemy.tierIndex, !!targetEnemy.isBoss);
+                                        var _rtpBelow = rtp.totalSpent > 0 && rtp.currentRTP() < 0.3;
+                                        var _rtpBon = _rtpBelow ? 0.25 : 0;
+                                        var inst = rng.next() < 0.005 + _rtpBon + (critState.isActive() ? 0.01 : 0);
+                                        var crit = !inst && rng.next() < 0.02 + _rtpBon + (critState.isActive() ? 0.15 : 0);
+                                        if (roll.hit || roll.instant || inst) {
+                                            spawnLightningSparks(targetEnemy.x, targetEnemy.y);
+                                            if (!inst && rollBlock(targetEnemy)) {
+                                                // blocked
+                                            } else {
+                                                var dmg = inst ? targetEnemy.hp : crit ? 3 : 2.7;
+                                                if (!inst && targetEnemy.isBoss) {
+                                                    var special = rollBossSpecial(now, targetEnemy);
+                                                    if (special > 0) dmg = special;
+                                                }
+                                                if (!inst) {
+                                                    var critRoll = critState.roll();
+                                                    if (critRoll > 1) dmg = dmg + critRoll;
+                                                }
+                                                targetEnemy._payoutBet = betAmount;
+                                                targetEnemy.hp -= dmg;
+                                                if (targetEnemy.hp <= 0) {
+                                                    if (targetEnemy.tierIndex === 11 && targetEnemy.state !== 'dying') {
+                                                        targetEnemy.hp = 0;
+                                                        targetEnemy.state = 'dying';
+                                                        targetEnemy.dyingTimer = now;
+                                                        targetEnemy.vx = 0;
+                                                        targetEnemy.vy = 0;
+                                                        bossState.bossHp = 0;
+                                                        if (rng.next() < 0.3) {
+                                                            var r = rng.next();
+                                                            var multi = 2;
+                                                            if (r >= 0.60 && r < 0.80) multi = 3;
+                                                            else if (r >= 0.80 && r < 0.90) multi = 4;
+                                                            else if (r >= 0.90 && r < 0.98) multi = 5;
+                                                            else if (r >= 0.98) multi = 6;
+                                                            targetEnemy.dyingFinalMult = multi;
+                                                        } else {
+                                                            targetEnemy.dyingFinalMult = 1;
+                                                        }
+                                                    } else if (targetEnemy.state !== 'dying') {
+                                                        if (targetEnemy.isD3) {
+                                                            triggerD3Death(targetEnemy);
+                                                        } else {
+                                                            killEnemy(targetEnemy, enemies.indexOf(targetEnemy));
+                                                        }
+                                                    }
+                                                } else if (targetEnemy.isBoss) {
+                                                    bossState.bossHp = targetEnemy.hp;
+                                                }
+                                            }
+                                        } else if (targetEnemy.isBoss) {
+                                            bossState.hitStartTime = null;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 });
@@ -10565,6 +10649,10 @@ window.addEventListener('resize', () => {
                 // ── Host state snapshot received (guests only) ──────────────────────
                 socket.on('hostStateUpdate', function(data) {
                     if (mpIsHost) return; // ignore our own echo
+                    // Sync balance from host (shared economy)
+                    if (data.balance !== undefined) {
+                        balance = data.balance;
+                    }
                     // Sync enemies from host
                     if (data.enemies) {
                         // Merge: keep enemies that still exist, update their state

@@ -6805,6 +6805,20 @@
                 }
                 }
 
+                // Guest: override enemy positions with interpolated values for smooth movement
+                if (mpRoom && !mpIsHost) {
+                    var _mpNow = performance.now();
+                    var _mpSnapInt = mpLastHostUpdate > 0 ? Math.min(_mpNow - mpLastHostUpdate, 50) : 16;
+                    for (var _mpi2 = enemies.length - 1; _mpi2 >= 0; _mpi2--) {
+                        var _mpe2 = enemies[_mpi2];
+                        if (_mpe2 && _mpe2._prevX !== undefined && _mpe2._lerpStart > 0) {
+                            var _mpT = _mpSnapInt > 0 ? Math.min((_mpNow - _mpe2._lerpStart) / _mpSnapInt, 1) : 1;
+                            _mpe2.x = _mpe2._prevX + (_mpe2.x - _mpe2._prevX) * _mpT;
+                            _mpe2.y = _mpe2._prevY + (_mpe2.y - _mpe2._prevY) * _mpT;
+                        }
+                    }
+                }
+
                 // HUD
 
                 document.getElementById("balanceDisplay").textContent =
@@ -10462,8 +10476,9 @@ window.addEventListener('resize', () => {
                         socket.emit('hostState', {
                             enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
                             balance: balance,
+                            ts: performance.now(),
                         });
-                    }, 50);
+                    }, 33);
                 }
             }
 
@@ -10507,8 +10522,9 @@ window.addEventListener('resize', () => {
                         socket.emit('hostState', {
                             enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
                             balance: balance,
+                            ts: performance.now(),
                         });
-                    }, 50);
+                    }, 33);
                 });
                 socket.on('roomClosed', function() {
                     mpRoom = null;
@@ -10576,6 +10592,9 @@ window.addEventListener('resize', () => {
                                         targetEnemy = e;
                                     }
                                 }
+                                var ackHit = false;
+                                var ackKilled = false;
+                                var ackDamage = 0;
                                 if (targetEnemy && closestDist < 120) {
                                     var now = performance.now();
                                     rtp.spend();
@@ -10604,9 +10623,12 @@ window.addEventListener('resize', () => {
                                                     var critRoll = critState.roll();
                                                     if (critRoll > 1) dmg = dmg + critRoll;
                                                 }
+                                                ackHit = true;
+                                                ackDamage = dmg;
                                                 targetEnemy._payoutBet = betAmount;
                                                 targetEnemy.hp -= dmg;
                                                 if (targetEnemy.hp <= 0) {
+                                                    ackKilled = true;
                                                     if (targetEnemy.tierIndex === 11 && targetEnemy.state !== 'dying') {
                                                         targetEnemy.hp = 0;
                                                         targetEnemy.state = 'dying';
@@ -10641,6 +10663,27 @@ window.addEventListener('resize', () => {
                                         }
                                     }
                                 }
+                                // Send immediate ack to all clients
+                                if (socket) socket.emit('actionAck', { seatIndex: seatIdx, type: 'fireAuto', enemyX: targetEnemy ? targetEnemy.x : null, enemyY: targetEnemy ? targetEnemy.y : null, hit: ackHit, killed: ackKilled, damage: ackDamage, balance: balance });
+                            }
+                        }
+                    }
+                });
+
+                // ── Action acknowledgement from host (guests only) ──────────────────
+                socket.on('actionAck', function(data) {
+                    if (mpIsHost || !data) return;
+                    if (data.balance !== undefined) balance = data.balance;
+                    if (data.type === 'fireAuto' && data.hit && data.enemyX != null) {
+                        var ackEnemy = enemies.find(function(e) {
+                            return Math.abs(e.x - data.enemyX) < 15 && Math.abs(e.y - data.enemyY) < 15 && e.state !== 'dying';
+                        });
+                        if (ackEnemy) {
+                            spawnLightningSparks(ackEnemy.x, ackEnemy.y);
+                            ackEnemy.hitEffect = 1.0;
+                            ackEnemy.hp -= data.damage || 0;
+                            if (data.killed) {
+                                killEnemy(ackEnemy, enemies.indexOf(ackEnemy));
                             }
                         }
                     }
@@ -10649,6 +10692,8 @@ window.addEventListener('resize', () => {
                 // ── Host state snapshot received (guests only) ──────────────────────
                 socket.on('hostStateUpdate', function(data) {
                     if (mpIsHost) return; // ignore our own echo
+                    // Track last snapshot time for interpolation
+                    mpLastHostUpdate = data.ts || performance.now();
                     // Sync balance from host (shared economy)
                     if (data.balance !== undefined) {
                         balance = data.balance;
@@ -10662,13 +10707,18 @@ window.addEventListener('resize', () => {
                             var found = newEnemies.some(function(ne) { return ne.x === enemies[i].x && ne.y === enemies[i].y && ne.tierIndex === enemies[i].tierIndex; });
                             if (!found) { enemies.splice(i, 1); }
                         }
-                        // Add/update enemies from host
+                        // Add/update enemies from host (with interpolation support)
+                        var now = performance.now();
                         newEnemies.forEach(function(ne) {
                             var existing = enemies.find(function(e) { return Math.abs(e.x - ne.x) < 5 && Math.abs(e.y - ne.y) < 5 && e.tierIndex === ne.tierIndex; });
                             if (existing) {
+                                // Save current as previous for interpolation
+                                existing._prevX = existing.x;
+                                existing._prevY = existing.y;
+                                existing._lerpStart = now;
                                 existing.x = ne.x; existing.y = ne.y; existing.hp = ne.hp;
                             } else {
-                                enemies.push({ x: ne.x, y: ne.y, size: ne.size, hp: ne.hp, maxHp: ne.maxHp, tierIndex: ne.tierIndex, vx: ne.vx || 0, vy: ne.vy || 0, isD1: !!ne.isD1, isD2: !!ne.isD2, state: ne.state || 'alive', active: true });
+                                enemies.push({ x: ne.x, y: ne.y, size: ne.size, hp: ne.hp, maxHp: ne.maxHp, tierIndex: ne.tierIndex, vx: ne.vx || 0, vy: ne.vy || 0, isD1: !!ne.isD1, isD2: !!ne.isD2, state: ne.state || 'alive', active: true, _prevX: ne.x, _prevY: ne.y, _lerpStart: now });
                             }
                         });
                     }

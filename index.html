@@ -5693,13 +5693,7 @@
                         // Nuke RTP miss — refund the cost
                         if (!nukeLanded) {
                             const refundNuke = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
-                            if (refundPopups.length < MAX_REFUND_POPUPS) {
-                                refundPopups.push({
-                                    text: "MISS REFUND +" + refundNuke.toString(),
-                                    startTime: performance.now(),
-                                    duration: 2000,
-                                });
-                            }
+
                         }
 
                         if (explosionFX.length < MAX_EXPLOSION_FX) {
@@ -6748,13 +6742,6 @@
                                                                     } else {
                                 // RTP miss — refund the bet
                                 const refundAmt = b.bet;
-                                if (refundPopups.length < MAX_REFUND_POPUPS) {
-                                    refundPopups.push({
-                                        text: "MISS REFUND +" + refundAmt.toString(),
-                                        startTime: performance.now(),
-                                        duration: 2000,
-                                    });
-                                }
                                 if (e.isBoss) {
                                     bossState.hitStartTime = null;
                                 }

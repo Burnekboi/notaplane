@@ -5693,7 +5693,6 @@
                         // Nuke RTP miss — refund the cost
                         if (!nukeLanded) {
                             const refundNuke = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
-                            balance += refundNuke;
                             sessionTotalBets -= betAmount * 1;
                             if (sessionTotalBets < 0) sessionTotalBets = 0;
                             rtp.totalSpent -= betAmount * 1;
@@ -6752,7 +6751,6 @@
                                                                     } else {
                                 // RTP miss — refund the bet
                                 const refundAmt = b.bet;
-                                balance += refundAmt;
 
                                 rtp.totalSpent -= refundAmt;
                                 sessionTotalBets -= refundAmt;

@@ -5693,9 +5693,6 @@
                         // Nuke RTP miss — refund the cost
                         if (!nukeLanded) {
                             const refundNuke = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
-                            sessionTotalBets -= betAmount * 1;
-                            if (sessionTotalBets < 0) sessionTotalBets = 0;
-                            rtp.totalSpent -= betAmount * 1;
                             if (refundPopups.length < MAX_REFUND_POPUPS) {
                                 refundPopups.push({
                                     text: "MISS REFUND +" + refundNuke.toString(),
@@ -6751,10 +6748,6 @@
                                                                     } else {
                                 // RTP miss — refund the bet
                                 const refundAmt = b.bet;
-
-                                rtp.totalSpent -= refundAmt;
-                                sessionTotalBets -= refundAmt;
-                                if (sessionTotalBets < 0) sessionTotalBets = 0;
                                 if (refundPopups.length < MAX_REFUND_POPUPS) {
                                     refundPopups.push({
                                         text: "MISS REFUND +" + refundAmt.toString(),

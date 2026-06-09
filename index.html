@@ -4252,7 +4252,7 @@
                         e.t6CrossingStartX = e.x;
                     }
                 } else if (e.state === "crossing") {
-                    const baseSpeed = 8;
+                    const baseSpeed = 16;
                     const sizeMult = e.t6CrossesDone >= 1 ? 2.5 : 1.0;
                     e.size = ENEMY_TIERS[6].size * sizeMult;
                     e.vx = e.t6CrossDir * baseSpeed;

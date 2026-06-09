@@ -54,11 +54,10 @@
 
             #gameWrap {
                 position: relative;
-                width: 800px;
-                height: 500px;
+                width: 100%;
+                height: 100%;
                 flex-shrink: 0;
                 line-height: 0;
-                transform-origin: center center;
             }
 
             #backBtn {
@@ -608,12 +607,12 @@
 
             // ── Loading screen overlay ──────────────────────────────────────────
             // Canvas setup for game rendering (loading shown via DOM overlay)
-            bgCanvas.width = 800;
-            bgCanvas.height = 500;
-            gameCanvas.width = 800;
-            gameCanvas.height = 500;
-            uiCanvas.width = 800;
-            uiCanvas.height = 500;
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+            gameCanvas.width = window.innerWidth;
+            gameCanvas.height = window.innerHeight;
+            uiCanvas.width = window.innerWidth;
+            uiCanvas.height = window.innerHeight;
 
             // ── Asset Preloading System ──────────────────────────────────────────
             // Shows the intro title image on the DOM overlay with progress bar,
@@ -915,7 +914,7 @@
                 }
             }
 
-            const W = canvas.width,
+            let W = canvas.width,
                 H = canvas.height;
 
             const player = { x: W / 2, y: H - 40, w: 50, h: 30 };
@@ -10123,17 +10122,22 @@ const gameWrap = document.getElementById('gameWrap');
 let isLandscape = true;
 
 function resizeGame() {
-    const targetRatio = 800 / 500;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-
-    let scale = Math.min(windowWidth / 800, windowHeight / 500);
-
-    const gameWrap = document.getElementById("gameWrap");
-    if (gameWrap) {
-        gameWrap.style.transform = `scale(${scale})`;
-        gameWrap.style.width = '800px';
-        gameWrap.style.height = '500px';
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    bgCanvas.width = w;
+    bgCanvas.height = h;
+    gameCanvas.width = w;
+    gameCanvas.height = h;
+    uiCanvas.width = w;
+    uiCanvas.height = h;
+    W = w;
+    H = h;
+    player.x = W / 2;
+    player.y = H - 40;
+    mouseX = W / 2;
+    mouseY = H / 2;
+    if (typeof layoutBaseHud === 'function') {
+        layoutBaseHud();
     }
 }
 

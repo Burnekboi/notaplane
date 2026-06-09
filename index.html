@@ -726,7 +726,20 @@
                 document.getElementById('ui').style.display = '';
                 document.getElementById('missileBtn').style.display = '';
                 document.getElementById('dragonBtn').style.display = '';
+                // Initialize balance from server (non-blocking)
+                setTimeout(initBalanceFromServer, 100);
             }
+
+            // Check for auth token in URL (passed from dashboard)
+            (function checkUrlToken() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlToken = urlParams.get('token');
+                if (urlToken) {
+                    localStorage.setItem('token', urlToken);
+                    authToken = urlToken;
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            })();
 
             // Kick off preloading
             preloadAssets(ASSET_PATHS, startGameAfterPreload);
@@ -942,6 +955,16 @@
             const DRAGON_STRIKE_COST_MULTIPLIER = 7;
 
             let balance = 0; // net balance: wins minus shots fired
+
+            // ── Server balance sync ───────────────────────────────────────────
+            // Tracks bets/wins during a session for periodic server sync.
+            let sessionTotalBets = 0;  // total SK bet this session
+            let sessionTotalWins = 0;  // total SK won this session
+            let lastSyncedBets = 0;    // bet amount last synced to server
+            let lastSyncedWins = 0;    // win amount last synced to server
+            let serverBalance = 0;     // balance fetched from server on game start
+            let authToken = null;      // JWT token for API calls
+            let syncInterval = null;   // periodic sync interval handle
 
             let mouseX = W / 2,
                 mouseY = H / 2;
@@ -1330,6 +1353,7 @@
                     const pr = pendingRewards[i];
                     if (now >= pr.readyAt) {
                         balance += pr.amount;
+                        sessionTotalWins += pr.amount;
                         baseRewardPopups.push({
                             text: "+" + pr.amount.toString(),
                             startTime: now,
@@ -1978,6 +2002,7 @@
                 // rtp.totalSpent += betAmount * 4; // already added 1 betAmount in spend(), add 4 more
 
                 balance -= betAmount * NUKE_STRIKE_COST_MULTIPLIER;
+                sessionTotalBets += betAmount * NUKE_STRIKE_COST_MULTIPLIER;
 
                 critState.onShot(performance.now());
                 playMissileFireSound();
@@ -1992,6 +2017,7 @@
 
                 rtp.spend();
                 balance -= betAmount * DRAGON_STRIKE_COST_MULTIPLIER;
+                sessionTotalBets += betAmount * DRAGON_STRIKE_COST_MULTIPLIER;
                 critState.onShot(ts);
                 missileState.onShot();
 
@@ -2665,6 +2691,7 @@
                 rtp.spend();
 
                 balance -= betAmount;
+                sessionTotalBets += betAmount;
 
                 critState.onShot(performance.now());
 
@@ -4674,6 +4701,8 @@
                 player.x = W / 2;
 
                 // Reset balance / economy
+                // Before resetting, sync any remaining balance to server
+                syncBalanceNow();
                 balance = 0;
                 betIndex = 0;
                 betAmount = BET_VALUES[0];
@@ -4683,6 +4712,10 @@
                 // Reset RTP
                 rtp.totalSpent = 0;
                 rtp.totalPaid = 0;
+                sessionTotalBets = 0;
+                sessionTotalWins = 0;
+                lastSyncedBets = 0;
+                lastSyncedWins = 0;
 
                 // Reset crit state
                 critState.phase = 'idle';
@@ -5663,6 +5696,8 @@
                             const refundNuke = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
                             balance += refundNuke;
                             rtp.totalSpent -= betAmount * 1;
+                            sessionTotalBets -= betAmount * 1;
+                            if (sessionTotalBets < 0) sessionTotalBets = 0;
                             if (refundPopups.length < MAX_REFUND_POPUPS) {
                                 refundPopups.push({
                                     text: "MISS REFUND +" + refundNuke.toString(),
@@ -5731,6 +5766,8 @@
                         balance += refundAmount;
                         
                         rtp.totalSpent -= betAmount * 1; // reverse only 1 shot worth (not 5) spend
+                        sessionTotalBets -= betAmount * 1;
+                        if (sessionTotalBets < 0) sessionTotalBets = 0;
                         
                         nukeMissiles.splice(i, 1);
                         
@@ -6295,6 +6332,8 @@
                         const refundAmt = b.bet;
                         balance += refundAmt;
                         rtp.totalSpent -= refundAmt;
+                        sessionTotalBets -= refundAmt;
+                        if (sessionTotalBets < 0) sessionTotalBets = 0;
                         b.active = false;
                         if (refundPopups.length < MAX_REFUND_POPUPS) {
                             refundPopups.push({
@@ -6715,6 +6754,8 @@
                                 const refundAmt = b.bet;
                                 balance += refundAmt;
                                 rtp.totalSpent -= refundAmt;
+                                sessionTotalBets -= refundAmt;
+                                if (sessionTotalBets < 0) sessionTotalBets = 0;
                                 if (refundPopups.length < MAX_REFUND_POPUPS) {
                                     refundPopups.push({
                                         text: "MISS REFUND +" + refundAmt.toString(),
@@ -10247,6 +10288,176 @@ function lockLandscape() {
     } catch (_) { /* WebApp methods may throw in restrictive environments */ }
     setTimeout(initTg, 50);
 })();
+
+// ── Server Balance Sync (auth + periodic sync) ────────────────────
+// Authenticates via Telegram WebApp, fetches server balance,
+// and syncs bet/win deltas periodically and on game exit.
+
+const API_BASE = window.location.origin;
+
+function initBalanceFromServer() {
+    // Try stored token first (from dashboard or previous session)
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+        authToken = storedToken;
+        fetchBalance();
+    }
+
+    // Fall back to Telegram WebApp auth
+    try {
+        const tg = window.Telegram?.WebApp;
+        if (tg && tg.initDataUnsafe?.user) {
+            const user = tg.initDataUnsafe.user;
+            fetch(API_BASE + '/api/auth/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: user.id,
+                    username: user.username,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    photo_url: user.photo_url,
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.token) {
+                    authToken = data.token;
+                    localStorage.setItem('token', data.token);
+                    if (data.user && data.user.sk_balance !== undefined) {
+                        serverBalance = data.user.sk_balance;
+                        balance = data.user.sk_balance;
+                    }
+                }
+            })
+            .catch(() => { /* offline mode — local balance only */ });
+        }
+    } catch (e) { /* Telegram not available — local balance only */ }
+}
+
+async function fetchBalance() {
+    if (!authToken) return;
+    try {
+        const res = await fetch(API_BASE + '/api/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.sk_balance !== undefined) {
+                serverBalance = data.sk_balance;
+                balance = data.sk_balance;
+            }
+        }
+    } catch (e) { /* offline */ }
+}
+
+// Syncs pending bet/win deltas to the server.
+// Called periodically and on game exit.
+async function syncBalanceNow() {
+    if (!authToken) return;
+
+    const pendingBets = sessionTotalBets - lastSyncedBets;
+    const pendingWins = sessionTotalWins - lastSyncedWins;
+
+    if (pendingBets <= 0 && pendingWins <= 0) return;
+
+    try {
+        if (pendingBets > 0) {
+            const res = await fetch(API_BASE + '/api/game/bet', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + authToken
+                },
+                body: JSON.stringify({ amount: pendingBets })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.sk_balance !== undefined) {
+                    serverBalance = data.sk_balance;
+                    balance = data.sk_balance;
+                }
+                lastSyncedBets = sessionTotalBets;
+            } else {
+                console.warn('Bet sync failed:', await res.text());
+            }
+        }
+
+        if (pendingWins > 0) {
+            const res = await fetch(API_BASE + '/api/game/win', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + authToken
+                },
+                body: JSON.stringify({ amount: pendingWins })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.sk_balance !== undefined) {
+                    serverBalance = data.sk_balance;
+                    balance = data.sk_balance;
+                }
+                lastSyncedWins = sessionTotalWins;
+            } else {
+                console.warn('Win sync failed:', await res.text());
+            }
+        }
+    } catch (e) {
+        console.warn('Sync failed (offline?):', e.message);
+    }
+}
+
+// ── Intercept back button to sync balance before navigating ──
+(function initBackBtn() {
+    const btn = document.getElementById('backBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetHref = this.getAttribute('href') || 'dashboard.html';
+
+        // Sync balance and then navigate
+        const syncAndGo = () => {
+            // Stop periodic sync
+            if (syncInterval) {
+                clearInterval(syncInterval);
+                syncInterval = null;
+            }
+            syncBalanceNow().finally(() => {
+                // Pass token as query param so dashboard can use it
+                const sep = targetHref.includes('?') ? '&' : '?';
+                const tokenVal = authToken || localStorage.getItem('token') || '';
+                window.location.href = targetHref + sep + 'token=' + encodeURIComponent(tokenVal);
+            });
+        };
+
+        syncAndGo();
+    });
+})();
+
+// ── Periodic server sync (every 3 seconds during play) ─────────
+syncInterval = setInterval(() => {
+    if (gamePhase === 'playing' || gamePhase === 'intro') {
+        syncBalanceNow();
+    }
+}, 3000);
+
+// ── Sync on page unload (refresh/close) ──
+window.addEventListener('beforeunload', () => {
+    if (syncInterval) clearInterval(syncInterval);
+    // Periodic 3s sync should have caught pending deltas already.
+    // For any remaining wins, use a synchronous fetch with proper auth header.
+    if (!authToken) return;
+    const pendingWins = sessionTotalWins - lastSyncedWins;
+    if (pendingWins > 0) {
+        try {
+            navigator.sendBeacon(
+                API_BASE + '/api/game/win?token=' + encodeURIComponent(authToken),
+                new Blob([JSON.stringify({ amount: pendingWins })], { type: 'application/json' })
+            );
+        } catch (e) {}
+    }
+});
 
 // Initial checks
 checkOrientation();

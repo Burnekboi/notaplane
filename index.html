@@ -607,6 +607,23 @@
             uiCanvas.width = screen.width;
             uiCanvas.height = screen.height;
 
+            // ── Game Scale (letterboxed fullscreen) ────────────────────────────
+            // Scales the 800x500 virtual game space to fit the screen
+            // while maintaining the 8:5 aspect ratio, with black letterbox bars.
+            let gameScale = 1;
+            let gameOffsetX = 0;
+            let gameOffsetY = 0;
+
+            function calcGameLayout() {
+                const sw = screen.width;
+                const sh = screen.height;
+                const s = Math.min(sw / 800, sh / 500);
+                gameScale = s;
+                gameOffsetX = Math.round((sw - 800 * s) / 2);
+                gameOffsetY = Math.round((sh - 500 * s) / 2);
+            }
+            calcGameLayout();
+
             // ── Asset Preloading System ──────────────────────────────────────────
             // Shows the intro title image on the DOM overlay with progress bar,
             // then starts the game loop once all assets are ready.
@@ -883,32 +900,33 @@
                     player.x + baseSize / 2 - textboxOverlap;
 
                 const showHud = true;
+                const s = gameScale;
 
                 leftHudBox.style.position = 'absolute';
-                leftHudBox.style.left = `${leftTextboxX}px`;
-                leftHudBox.style.top = `${textboxY}px`;
-                leftHudBox.style.width = `${textboxW}px`;
-                leftHudBox.style.height = `${textboxH}px`;
+                leftHudBox.style.left = `${gameOffsetX + leftTextboxX * s}px`;
+                leftHudBox.style.top = `${gameOffsetY + textboxY * s}px`;
+                leftHudBox.style.width = `${textboxW * s}px`;
+                leftHudBox.style.height = `${textboxH * s}px`;
                 leftHudBox.style.opacity = showHud ? "1" : "0";
 
                 rightHudBox.style.position = 'absolute';
-                rightHudBox.style.left = `${rightTextboxX}px`;
-                rightHudBox.style.top = `${textboxY}px`;
-                rightHudBox.style.width = `${textboxW}px`;
-                rightHudBox.style.height = `${textboxH}px`;
+                rightHudBox.style.left = `${gameOffsetX + rightTextboxX * s}px`;
+                rightHudBox.style.top = `${gameOffsetY + textboxY * s}px`;
+                rightHudBox.style.width = `${textboxW * s}px`;
+                rightHudBox.style.height = `${textboxH * s}px`;
                 rightHudBox.style.opacity = showHud ? "1" : "0";
 
                 const betIndicator = document.getElementById("betIndicator");
                 if (betIndicator) {
                     betIndicator.style.position = 'absolute';
-                    betIndicator.style.left = `${player.x}px`;
-                    betIndicator.style.bottom = '6px';
+                    betIndicator.style.left = `${gameOffsetX + player.x * s}px`;
+                    betIndicator.style.bottom = `${gameOffsetY + 6 * s}px`;
                     betIndicator.style.transform = 'translateX(-50%)';
                 }
             }
 
-            let W = canvas.width,
-                H = canvas.height;
+            let W = 800,
+                H = 500;
 
             const player = { x: W / 2, y: H - 40, w: 50, h: 30 };
 
@@ -2361,9 +2379,9 @@
                 const r = canvas.getBoundingClientRect();
 
                 return {
-                    x: (e.clientX - r.left) * (W / r.width),
+                    x: (e.clientX - r.left - gameOffsetX) / gameScale,
 
-                    y: (e.clientY - r.top) * (H / r.height),
+                    y: (e.clientY - r.top - gameOffsetY) / gameScale,
                 };
             }
 
@@ -2515,8 +2533,8 @@
                 const r = canvas.getBoundingClientRect();
                 const t = e.touches[0];
                 return {
-                    x: (t.clientX - r.left) * (W / r.width),
-                    y: (t.clientY - r.top) * (H / r.height),
+                    x: (t.clientX - r.left - gameOffsetX) / gameScale,
+                    y: (t.clientY - r.top - gameOffsetY) / gameScale,
                 };
             }
 
@@ -6737,8 +6755,15 @@
             // ── Draw ──────────────────────────────────────────────────────────────────
 
             function drawBg() {
-                if (bgDrawn) return;
-                if (cosmosImg.complete && cosmosImg.naturalWidth > 0) {
+                // Apply game-space transform (required even when bg is already drawn)
+                bgCtx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
+
+                if (!bgDrawn && cosmosImg.complete && cosmosImg.naturalWidth > 0) {
+                    // Clear full canvas with black (for letterbox areas), then draw background
+                    bgCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    bgCtx.fillStyle = '#000';
+                    bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+                    bgCtx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
                     bgCtx.drawImage(cosmosImg, 0, 0, W, H);
                     bgDrawn = true;
                 }
@@ -6746,7 +6771,11 @@
 
             function drawUi() {
                 if (popups.length === 0 && baseRewardPopups.length === 0 && refundPopups.length === 0) return;
-                uiCtx.clearRect(0, 0, W, H);
+                // Reset transform and clear full canvas
+                uiCtx.setTransform(1, 0, 0, 1, 0, 0);
+                uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+                // Apply game-space transform
+                uiCtx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
                 { const ctx = uiCtx;
                     // ── Reward popups ──────────────────────────────────────────────
                     const popupNow = performance.now();
@@ -6849,9 +6878,14 @@
                 const introElapsed = introNow - introStartTime;
                 const fadeAlpha = Math.min(1, introElapsed / INTRO_FADE_DURATION);
 
-                ctx.clearRect(0, 0, W, H);
+                // Reset transform and clear full canvas
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "#000";
-                ctx.fillRect(0, 0, W, H);
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Apply game-space transform
+                ctx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
 
                 const cx = W / 2;
                 const cy = H / 2;
@@ -6911,7 +6945,14 @@
 
                 layoutBaseHud();
                 drawBg();
-                ctx.clearRect(0, 0, W, H);
+                // Reset transform and clear full canvas (incl. letterbox)
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Apply game-space transform
+                ctx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
 
                 ctx.save();
                 const shakeNow = performance.now();
@@ -10144,14 +10185,22 @@ let isLandscape = true;
 function resizeGame() {
     const w = screen.width;
     const h = screen.height;
+
+    // Update canvas pixel buffers to match screen dimensions
     bgCanvas.width = w;
     bgCanvas.height = h;
     gameCanvas.width = w;
     gameCanvas.height = h;
     uiCanvas.width = w;
     uiCanvas.height = h;
-    W = w;
-    H = h;
+
+    // Calculate scale to fit 800x500 virtual space into screen with aspect ratio
+    const s = Math.min(w / 800, h / 500);
+    gameScale = s;
+    gameOffsetX = Math.round((w - 800 * s) / 2);
+    gameOffsetY = Math.round((h - 500 * s) / 2);
+
+    bgDrawn = false;
     player.x = W / 2;
     player.y = H - 40;
     mouseX = W / 2;

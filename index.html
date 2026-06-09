@@ -5,7 +5,6 @@
         <title>Shooter Prototype</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
-        <script src="/socket.io/socket.io.js"></script>
 
         <style>
             * {
@@ -502,78 +501,6 @@
             }
 
             /* ── Matchmaking Overlay ── */
-            #roomOverlay {
-                display: none;
-                position: fixed;
-                inset: 0;
-                z-index: 99998;
-                background: rgba(5,10,20,0.95);
-                justify-content: center;
-                align-items: center;
-                font-family: 'Impact', 'Arial Black', sans-serif;
-            }
-            #roomOverlay.active {
-                display: flex;
-            }
-            #playOverlay {
-                text-align: center;
-                color: #ffd866;
-                max-width: 380px;
-                width: 85%;
-            }
-            #playTitle {
-                font-size: 24px;
-                letter-spacing: 3px;
-                margin-bottom: 2px;
-                text-shadow: 0 0 20px rgba(255,200,80,0.3);
-            }
-            #playSub {
-                font-size: 12px;
-                letter-spacing: 4px;
-                color: rgba(255,216,102,0.5);
-                margin-bottom: 30px;
-                text-transform: uppercase;
-            }
-            #playBtn {
-                padding: 12px 60px;
-                border: 2px solid rgba(255,200,100,0.6);
-                border-radius: 8px;
-                background: linear-gradient(180deg, rgba(255,200,100,0.2), rgba(200,140,40,0.1));
-                color: #ffd866;
-                font: bold 24px 'Impact','Arial Black',sans-serif;
-                letter-spacing: 4px;
-                cursor: pointer;
-                text-shadow: 0 0 10px rgba(255,200,80,0.4);
-                transition: all 0.2s;
-            }
-            #playBtn:hover {
-                background: linear-gradient(180deg, rgba(255,200,100,0.35), rgba(200,140,40,0.2));
-                border-color: rgba(255,220,140,0.8);
-            }
-            #playBtn:active {
-                transform: scale(0.97);
-            }
-            #playStatus {
-                color: rgba(255,216,102,0.5);
-                font-size: 14px;
-                letter-spacing: 2px;
-                margin-top: 20px;
-                min-height: 20px;
-            }
-            #playStatus.searching {
-                animation: pulse 1.5s ease-in-out infinite;
-            }
-            @keyframes pulse {
-                0%, 100% { opacity: 0.4; }
-                50% { opacity: 1; }
-            }
-            #playError {
-                color: #ff6644;
-                font-size: 13px;
-                margin-top: 12px;
-                min-height: 20px;
-            }
-
         </style>
     </head>
 
@@ -587,17 +514,6 @@
                 </div>
                 <div class="loading-pct" id="loadingPct">0%</div>
                 <div class="loading-sub">Preparing the battlefield...</div>
-            </div>
-
-            <!-- ── Matchmaking Overlay ── -->
-            <div id="roomOverlay">
-                <div id="playOverlay">
-                    <div id="playTitle">SPACE KING JACKPOT</div>
-                    <div id="playSub">Multiplayer Table</div>
-                    <button id="playBtn">PLAY</button>
-                    <div id="playStatus"></div>
-                    <div id="playError"></div>
-                </div>
             </div>
 
             <canvas id="bgCanvas"></canvas>
@@ -795,7 +711,12 @@
 
             function startGameAfterPreload() {
                 document.getElementById('loadingOverlay').classList.add('hidden');
-                showPlayOverlay();
+                introStartTime = performance.now();
+                gamePhase = 'intro';
+                document.getElementById('hudOverlay').style.display = '';
+                document.getElementById('ui').style.display = '';
+                document.getElementById('missileBtn').style.display = '';
+                document.getElementById('dragonBtn').style.display = '';
             }
 
             // Kick off preloading
@@ -997,15 +918,7 @@
             const W = canvas.width,
                 H = canvas.height;
 
-            const player = { x: 175, y: H - 40, w: 50, h: 30 };
-
-            const ACTIVE_PLAYER_INDEX = 0;
-            const basePositions = [
-                { x: 175, y: 460 },  // 0: bottom-left  (PLAYER)
-                { x: 625, y: 460 },  // 1: bottom-right (vacant)
-                { x: 175, y: 40 },   // 2: top-left     (vacant)
-                { x: 625, y: 40 },   // 3: top-right    (vacant)
-            ];
+            const player = { x: W / 2, y: H - 40, w: 50, h: 30 };
 
             const bullets = [];
 
@@ -1375,7 +1288,7 @@
             const activeTitles = []; // { type: 'T6'|'T6B'|'T6C', startTime, duration }
             const MAX_ACTIVE_TITLES = 10;
 
-            function showTitle(type, playerIdx = ACTIVE_PLAYER_INDEX, enemyRef = null) {
+            function showTitle(type, playerIdx = 0, enemyRef = null) {
                 const durations = { T6: Infinity, T6B: Infinity, T6C: 3000, NT1: Infinity, D1: 3000, D2: 3000, D3: Infinity, D4: Infinity };
                 activeTitles.push({ type, startTime: performance.now(), duration: durations[type], playerIdx, enemyRef });
             }
@@ -2739,8 +2652,6 @@
 
                 const len = Math.sqrt(dx * dx + dy * dy) || 1;
 
-                // Guest in multiplayer: don't charge balance/rtp locally — host handles it
-                if (!mpRoom || mpIsHost) {
                 rtp.spend();
 
                 balance -= betAmount;
@@ -2748,7 +2659,6 @@
                 critState.onShot(performance.now());
 
                 missileState.onShot();
-                }
 
                 playBulletFireSound();
 
@@ -3515,7 +3425,7 @@
             }
 
             function triggerD3Death(d3) {
-                showTitle('D3', ACTIVE_PLAYER_INDEX, d3);
+                showTitle('D3', 0, d3);
 
                 // Start death sequence - D3 stops, then readies ability
 
@@ -3754,7 +3664,7 @@
             }
 
             function triggerD4Death(d4) {
-                showTitle('D4', ACTIVE_PLAYER_INDEX, d4);
+                showTitle('D4', 0, d4);
                 d4.state = "chaining";
                 d4.hp = d4.maxHp; // invulnerable during chain
                 d4.vx = 0;
@@ -4546,7 +4456,7 @@
 
             function spawnEnemy() {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 // Skip ~25% of spawn calls to reduce overall density
                 if (Math.random() < 0.25) return;
                 const side = Math.floor(Math.random() * 3);
@@ -4702,7 +4612,6 @@
             let spawningPaused = false;
 
             function scheduleReset() {
-                if (mpRoom && !mpIsHost) return; // Only host manages game lifecycle
                 if (resetTimer) clearTimeout(resetTimer);
                 if (spawnStopTimer) clearTimeout(spawnStopTimer);
                 spawningPaused = false;
@@ -4739,7 +4648,6 @@
                 explosionFX.length = 0;
                 d2DeathAnims.length = 0;
                 if (window.d2Shockwaves) window.d2Shockwaves.length = 0;
-                remoteBeams.length = 0;
 
                 // Clear burst interval
                 if (burstInterval) {
@@ -4753,7 +4661,7 @@
                 introStartTime = performance.now();
 
                 // Reset player position
-                player.x = basePositions[ACTIVE_PLAYER_INDEX].x;
+                player.x = W / 2;
 
                 // Reset balance / economy
                 balance = 0;
@@ -4863,7 +4771,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 // extra solo T1A (straight)
 
                 const side = Math.floor(Math.random() * 3),
@@ -4896,7 +4804,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 // extra solo T1B (wave)
 
                 const side = Math.floor(Math.random() * 3),
@@ -4929,7 +4837,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 // extra solo T2
 
                 const side = Math.floor(Math.random() * 3),
@@ -4962,7 +4870,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 // extra solo T3
                 const side = Math.floor(Math.random() * 3),
                     t = ENEMY_TIERS[3];
@@ -4984,7 +4892,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 // extra solo T5
                 const side = Math.floor(Math.random() * 3),
                     t = ENEMY_TIERS[5];
@@ -5010,7 +4918,7 @@
 
             function spawnT6C() {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 if (t6cSpawnCooldown) return;
                 const side = Math.floor(Math.random() * 3);
                 const t = ENEMY_TIERS[15];
@@ -5043,7 +4951,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 // Skip ~25% of spawn calls to reduce overall density
                 if (Math.random() < 0.25) return;
                 const side = Math.floor(Math.random() * 3);
@@ -5057,7 +4965,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 const ti = rng.next() < 0.5 ? 9 : 10;
 
                 const t = ENEMY_TIERS[ti];
@@ -5096,7 +5004,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 const side = Math.floor(Math.random() * 3);
                 const t = ENEMY_TIERS[0]; // T1A
                 const ti = 0;
@@ -5132,7 +5040,7 @@
 
             setInterval(() => {
                 if (gamePhase !== 'playing' || spawningPaused) return;
-                if (mpRoom && !mpIsHost) return;
+
                 const ti = 12; // Elite T2 index
 
                 const t = ENEMY_TIERS[ti];
@@ -5192,7 +5100,7 @@
 
                 // D1: must only trigger thunder once, and triggerThunder() expects D1 already removed.
                 if (e.isD1) {
-                    showTitle('D1', ACTIVE_PLAYER_INDEX);
+                    showTitle('D1', 0);
                     // Spawn explosion animation for specified tiers
                     spawnExplosionAnimation(e.x, e.y, e.tierIndex, e.size);
 
@@ -5245,7 +5153,7 @@
                     if (!e.chainTriggered) {
                         e.chainTriggered = true;
                         e.state = "chaining";
-                        showTitle('NT1', ACTIVE_PLAYER_INDEX, e);
+                        showTitle('NT1', 0, e);
                         e.hp = 999;
                         e.vx = 0;
                         e.vy = 0;
@@ -5395,7 +5303,7 @@
 
                     if (!e.d2Triggered && e.hp <= 0) {
                         e.d2Triggered = true;
-                        showTitle('D2', ACTIVE_PLAYER_INDEX);
+                        showTitle('D2', 0);
                         e._killed = true;
                         e.state = "dying";
                         e.hp = 0;
@@ -5787,13 +5695,6 @@
                         continue;
                     }
 
-                    // Remote missiles: remove when off-screen, no refund
-
-                    if (m.fromRemote && (m.x < -50 || m.x > W + 50 || m.y < -50 || m.y > H + 50)) {
-                        nukeMissiles.splice(i, 1);
-                        continue;
-                    }
-
                     // Off-screen — refund the cost and remove
 
                     if (
@@ -6136,16 +6037,11 @@
 
                                 laserAlpha = 1.0;
 
-                                if (mpRoom && autoTarget) {
-                                    mpSendAction('fireAuto', { targetX: autoTarget.x, targetY: autoTarget.y });
-                                }
-
                                 // Trigger red flash hit effect on lightning touch (even if blocked or misses)
 
                                 autoTarget.hitEffect = 1.0;
 
-                                // Guest: auto damage is processed by host — skip local damage processing
-                                if (!mpRoom || mpIsHost) {
+                                // Auto damage processing
 
                                 rtp.spend();
 
@@ -6312,7 +6208,7 @@
                                     }
                                 } // end else (not dying)
 
-                                } // end single/multi host check
+                                }
                             }
                         }
                     }
@@ -6694,11 +6590,6 @@
 
                             b.active = false;
 
-                            // Guest skips all bullet damage in multiplayer — host is authoritative
-                            if (mpRoom && !mpIsHost) {
-                                break;
-                            }
-
                             processBossHit(e, ts);
 
                             const roll = rtp.rollHit(e.tierIndex, !!e.isBoss);
@@ -6803,20 +6694,6 @@
                             break;
                     }
                 }
-                }
-
-                // Guest: override enemy positions with interpolated values for smooth movement
-                if (mpRoom && !mpIsHost) {
-                    var _mpNow = performance.now();
-                    var _mpSnapInt = mpLastHostUpdate > 0 ? Math.min(_mpNow - mpLastHostUpdate, 50) : 16;
-                    for (var _mpi2 = enemies.length - 1; _mpi2 >= 0; _mpi2--) {
-                        var _mpe2 = enemies[_mpi2];
-                        if (_mpe2 && _mpe2._prevX !== undefined && _mpe2._lerpStart > 0) {
-                            var _mpT = _mpSnapInt > 0 ? Math.min((_mpNow - _mpe2._lerpStart) / _mpSnapInt, 1) : 1;
-                            _mpe2.x = _mpe2._prevX + (_mpe2.x - _mpe2._prevX) * _mpT;
-                            _mpe2.y = _mpe2._prevY + (_mpe2.y - _mpe2._prevY) * _mpT;
-                        }
-                    }
                 }
 
                 // HUD
@@ -9251,7 +9128,6 @@
                 bullets.forEach((b) => {
                     if (!b.active) return;
                     ctx.save();
-                    if (b.fromRemote) ctx.globalAlpha = 0.35;
                     if (bulletImg.complete && bulletImg.naturalWidth > 0) {
 
                         ctx.translate(b.x, b.y);
@@ -9303,11 +9179,10 @@
                     if (t.type !== 'D1') continue;
                     const img = d1TitleImg;
                     if (img.complete && img.naturalWidth > 0) {
-                        const bp = basePositions[t.playerIdx] || basePositions[ACTIVE_PLAYER_INDEX];
                         const th = 42 * 2;
                         const tw = th * (img.naturalWidth / img.naturalHeight);
-                        const titleX = bp.x - tw / 2;
-                        const titleY = bp.y - 60 - th + 30;
+                        const titleX = player.x - tw / 2;
+                        const titleY = player.y - 60 - th + 30;
                         ctx.drawImage(img, titleX, titleY, tw, th);
                     }
                 }
@@ -9315,32 +9190,6 @@
                 // ── Player: Base Cannon (static, centered) ──────────────────────────────
 
                 const baseSize = 120;
-
-                // ── Vacant bases for other player slots ──────────────────────────
-
-                for (let i = 0; i < basePositions.length; i++) {
-                    if (i === ACTIVE_PLAYER_INDEX) continue;
-                    const bp = basePositions[i];
-                    const isTop = bp.y < 250;
-                    if (baseCannonImg.complete && baseCannonImg.naturalWidth > 0) {
-                        ctx.save();
-                        ctx.translate(bp.x, bp.y);
-                        if (isTop) ctx.scale(1, -1);
-                        ctx.drawImage(
-                            baseCannonImg,
-                            -baseSize / 2,
-                            -baseSize / 2,
-                            baseSize,
-                            baseSize,
-                        );
-                        ctx.restore();
-                    } else {
-                        ctx.fillStyle = "#555";
-                        ctx.beginPath();
-                        ctx.arc(bp.x, bp.y, 20, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
 
                 const textboxOk =
                     baseTextboxImg.complete && baseTextboxImg.naturalWidth > 0;
@@ -9530,14 +9379,13 @@
                     if (t.type === 'D1') continue;
                     const img = t.type === 'T6' ? t6TitleImg : t.type === 'T6B' ? t6bTitleImg : t.type === 'T6C' ? t6cTitleImg : t.type === 'NT1' ? nt1TitleImg : t.type === 'D2' ? d2TitleImg : t.type === 'D3' ? d3TitleImg : t.type === 'D4' ? d4TitleImg : null;
                     if (img && img.complete && img.naturalWidth > 0) {
-                        const bp = basePositions[t.playerIdx] || basePositions[ACTIVE_PLAYER_INDEX];
                         const isT6C = t.type === 'T6C';
                         const scale = isT6C ? 3 : (t.type === 'NT1' || t.type === 'D1' || t.type === 'D2') ? 2 : (t.type === 'D3' || t.type === 'D4') ? 2 : 1.5;
                         const th = TITLE_BASE_H * scale;
                         const tw = th * (img.naturalWidth / img.naturalHeight);
                         const gap = isT6C ? -45 : t.type === 'T6' ? -10 : t.type === 'T6B' ? -25 : (t.type === 'NT1' || t.type === 'D1' || t.type === 'D2' || t.type === 'D3' || t.type === 'D4') ? -30 : 2;
-                        const titleX = bp.x - tw / 2;
-                        const titleY = bp.y - baseSize / 2 - th - gap;
+                        const titleX = player.x - tw / 2;
+                        const titleY = player.y - baseSize / 2 - th - gap;
                         ctx.drawImage(img, titleX, titleY, tw, th);
                     }
                 }
@@ -9688,7 +9536,7 @@
                     const mAngle = Math.atan2(m.vy, m.vx);
 
                     ctx.save();
-                    if (m.fromRemote) ctx.globalAlpha = 0.35;
+
 
                     ctx.translate(m.x, m.y);
 
@@ -9990,7 +9838,7 @@
                                   THUNDER_EXPLOSION_FRAMES) *
                                   0.25
                             : 0.97;
-                    if (thunder.fromRemote) alpha *= 0.3;
+
 
                     const fw = thunderImg.naturalWidth / THUNDER_COLS;
                     const fh = thunderImg.naturalHeight / THUNDER_ROWS;
@@ -10173,83 +10021,7 @@
 
                  ctx.restore();
 
-                drawRemotePlayers();
                 drawUi();
-            }
-
-            function drawRemotePlayers() {
-                if (!mpRoom || mpPlayers.length === 0) return;
-                var baseSize = 120;
-                for (var i = 0; i < mpPlayers.length; i++) {
-                    var p = mpPlayers[i];
-                    if (!p || p.seatIndex === mpSeat) continue;
-                    var bp = basePositions[p.seatIndex];
-                    if (!bp) continue;
-                    var angle = p.cannonAngle || 0;
-
-                    // Draw base cannon (static)
-                    if (baseCannonImg.complete && baseCannonImg.naturalWidth > 0) {
-                        ctx.drawImage(baseCannonImg, bp.x - baseSize / 2, bp.y - baseSize / 2, baseSize, baseSize);
-                    } else {
-                        ctx.fillStyle = "#2ed573";
-                        ctx.beginPath();
-                        ctx.arc(bp.x, bp.y, 20, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-
-                    // Draw rotating cannon (sprite)
-                    if (cannonSheetImg.complete && cannonSheetImg.naturalWidth > 0) {
-                        var fw = cannonSheetImg.naturalWidth / CANNON_COLS;
-                        var fh = cannonSheetImg.naturalHeight / CANNON_ROWS;
-                        var col = cannonFrame % CANNON_COLS;
-                        var row = Math.floor(cannonFrame / CANNON_COLS);
-                        var cannonSize = 100;
-                        ctx.save();
-                        ctx.translate(bp.x, bp.y);
-                        ctx.rotate(angle + Math.PI / 2);
-                        ctx.drawImage(cannonSheetImg, col * fw, row * fh, fw, fh, -cannonSize / 2, -cannonSize / 2, cannonSize, cannonSize);
-                        ctx.restore();
-                    }
-
-                    // ── Lightning ball (electric ball.png) ────────────────────
-                    if (lightningSheet && lightningSheet.complete && lightningSheet.naturalWidth > 0 && lightningFrames.length > 0) {
-                        var lf = lightningFrames[lightningFrame];
-                        var fr = lf.frame, sss = lf.spriteSourceSize, ss = lf.sourceSize;
-                        var scale = LIGHTNING_SIZE / ss.w;
-                        var ballCX = bp.x;
-                        var ballCY = bp.y - 45 - LIGHTNING_SIZE * 0.35;
-                        ctx.save();
-                        ctx.globalAlpha = 0.35;
-                        ctx.shadowColor = 'rgba(255,180,80,0.2)';
-                        ctx.shadowBlur = 4;
-                        ctx.drawImage(lightningSheet, fr.x, fr.y, fr.w, fr.h, ballCX - LIGHTNING_SIZE / 2 + sss.x * scale, ballCY - LIGHTNING_SIZE / 2 + sss.y * scale, fr.w * scale, fr.h * scale);
-                        ctx.restore();
-                    }
-
-                    // Name label
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 10px Impact,Arial Black,sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'bottom';
-                    ctx.shadowColor = '#000';
-                    ctx.shadowBlur = 4;
-                    ctx.fillText(p.name, bp.x, bp.y - 24);
-                    ctx.shadowBlur = 0;
-                }
-
-                // ── Remote auto beams (procedural lightning bolts) ────────────
-                var now = performance.now();
-                for (var bi = remoteBeams.length - 1; bi >= 0; bi--) {
-                    var rb = remoteBeams[bi];
-                    if (!rb || !rb.fromX) continue;
-                    var elapsed = now - rb.createdAt;
-                    if (elapsed > 230) { remoteBeams.splice(bi, 1); continue; }
-                    var bA = 0.35 * (1 - elapsed / 230);
-                    ctx.save();
-                    ctx.globalAlpha = bA;
-                    drawProceduralBolt(rb.fromX, rb.fromY, rb.toX, rb.toY, 'rgba(255,200,100,0.55)', '#fff');
-                    ctx.restore();
-                }
             }
 
             // ── Thunder FX (Dragon Strike) ──────────────────────────────────────
@@ -10421,370 +10193,6 @@ window.addEventListener('resize', () => {
     checkOrientation();
     resizeGame();
 });
-
-            // ── Multiplayer ─────────────────────────────────────────────────────────
-            var socket = null;
-            var mpRoom = null;
-            var mpSeat = -1;
-            var mpIsHost = false;
-            var mpPlayers = []; // { seatIndex, name, cannonAngle, balance }
-            var mpConnected = false;
-            var mpHostStateInterval = null;
-            var mpAimInterval = null;
-            var mpLastHostUpdate = 0;
-
-            // Remote player visual effects
-            var remoteBeams = []; // { fromX, fromY, toX, toY, createdAt }
-
-            var playBtn = document.getElementById('playBtn');
-            var playStatus = document.getElementById('playStatus');
-            var playError = document.getElementById('playError');
-            var roomOverlay = document.getElementById('roomOverlay');
-
-            function showPlayOverlay() { roomOverlay.classList.add('active'); }
-            function hidePlayOverlay() { roomOverlay.classList.remove('active'); }
-            function setPlayError(msg) { playError.textContent = msg; }
-
-            function startGame() {
-                hidePlayOverlay();
-                // Place player at their seat
-                var seatPos = basePositions[mpSeat];
-                if (seatPos) { player.x = seatPos.x; player.y = seatPos.y; }
-                var isJoining = !mpIsHost;
-                if (isJoining) {
-                    // Joining an existing table — skip intro, go straight to playing
-                    gamePhase = 'playing';
-                    document.getElementById('hudOverlay').style.display = '';
-                    document.getElementById('ui').style.display = '';
-                    document.getElementById('missileBtn').style.display = '';
-                    document.getElementById('dragonBtn').style.display = '';
-                } else {
-                    introStartTime = performance.now();
-                    gamePhase = 'intro';
-                }
-                // ── Periodic aim broadcast (all players) ─────────────────────
-                if (mpAimInterval) clearInterval(mpAimInterval);
-                mpAimInterval = setInterval(function() {
-                    if (!socket || !mpRoom || !socket.connected) return;
-                    socket.emit('playerAction', { type: 'aim', angle: Math.atan2(mouseY - player.y, mouseX - player.x) });
-                }, 100);
-                // ── Host state broadcast (host only) ─────────────────────────
-                if (mpIsHost) {
-                    if (mpHostStateInterval) clearInterval(mpHostStateInterval);
-                    mpHostStateInterval = setInterval(function() {
-                        if (!socket || !mpRoom) return;
-                        socket.emit('hostState', {
-                            enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
-                            balance: balance,
-                            ts: performance.now(),
-                        });
-                    }, 33);
-                }
-            }
-
-            function connectSocket() {
-                try {
-                    socket = io();
-                } catch (e) {
-                    setPlayError('Connection failed: ' + e.message);
-                    return;
-                }
-                socket.on('connect', function() {
-                    mpConnected = true;
-                    setPlayError('');
-                });
-                socket.on('disconnect', function() {
-                    mpConnected = false;
-                    if (mpRoom) setPlayError('Disconnected from server');
-                });
-                socket.on('connect_error', function(err) {
-                    setPlayError('Connection error: ' + err.message);
-                });
-
-                socket.on('playerJoined', function(data) {
-                    mpPlayers = data.players;
-                });
-                socket.on('playerLeft', function(data) {
-                    mpPlayers = data.players;
-                    if (!mpPlayers.find(function(p) { return p.seatIndex === mpSeat; })) {
-                        // I was kicked? Reset
-                        mpRoom = null;
-                        mpSeat = -1;
-                        mpIsHost = false;
-                showPlayOverlay();
-                    }
-                });
-                socket.on('youAreHost', function() {
-                    mpIsHost = true;
-                    if (mpHostStateInterval) clearInterval(mpHostStateInterval);
-                    mpHostStateInterval = setInterval(function() {
-                        if (!socket || !mpRoom) return;
-                        socket.emit('hostState', {
-                            enemies: enemies.map(function(e) { return { x: e.x, y: e.y, size: e.size, hp: e.hp, maxHp: e.maxHp, tierIndex: e.tierIndex, vx: e.vx, vy: e.vy, isD1: !!e.isD1, isD2: !!e.isD2, state: e.state }; }),
-                            balance: balance,
-                            ts: performance.now(),
-                        });
-                    }, 33);
-                });
-                socket.on('roomClosed', function() {
-                    mpRoom = null;
-                    mpSeat = -1;
-                    mpIsHost = false;
-                    if (mpHostStateInterval) { clearInterval(mpHostStateInterval); mpHostStateInterval = null; }
-                    setPlayError('Room closed');
-                    showPlayOverlay();
-                });
-
-                // ── Remote action received from another player ──────────────────────
-                socket.on('remoteAction', function(data) {
-                    if (data.type === 'fire') {
-                        // Another player fired — create a bullet to render
-                        var seatIdx = data.seatIndex;
-                        var seat = basePositions[seatIdx];
-                        if (!seat) return;
-                        var angle = data.angle || 0;
-                        var bx = seat.x + Math.cos(angle) * 20;
-                        var by = seat.y + Math.sin(angle) * 20;
-                        var bvx = Math.cos(angle) * 8;
-                        var bvy = Math.sin(angle) * 8;
-                        bullets.push({ x: bx, y: by, vx: bvx, vy: bvy, active: true, fromSeat: seatIdx, r: 5, bounces: 0, bet: betAmount, fromRemote: true });
-                    } else if (data.type === 'aim') {
-                        // Another player moved their aim — update their angle
-                        var p = mpPlayers.find(function(x) { return x.seatIndex === data.seatIndex; });
-                        if (p) p.cannonAngle = data.angle;
-                    } else if (data.type === 'fireNuke') {
-                        // Another player fired a nuke missile
-                        var seatIdx = data.seatIndex;
-                        var seat = basePositions[seatIdx];
-                        if (!seat) return;
-                        var angle = data.angle || 0;
-                        var speed = 8;
-                        var tipOffset = 75 * 0.65;
-                        var tipX = seat.x + Math.cos(angle) * tipOffset;
-                        var tipY = seat.y + Math.sin(angle) * tipOffset;
-                        nukeMissiles.push({ x: tipX, y: tipY, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, target: null, bet: betAmount * NUKE_STRIKE_COST_MULTIPLIER, fromRemote: true });
-                    } else if (data.type === 'fireDragon') {
-                        // Another player used dragon strike
-                        var cx = data.targetX;
-                        var cy = data.targetY;
-                        if (cx !== undefined && cy !== undefined && typeof THUNDER_TOTAL_MS !== 'undefined') {
-                            thunderAttacks.push({ x: cx, y: cy, frame: 0, frameTimer: 0, ttl: THUNDER_TOTAL_MS, rotation: Math.random() * Math.PI * 2, fromRemote: true });
-                        }
-                    } else if (data.type === 'fireAuto') {
-                        // Another player fired auto lightning beam
-                        var seatIdx = data.seatIndex;
-                        var seat = basePositions[seatIdx];
-                        if (!seat) return;
-                        var tx = data.targetX;
-                        var ty = data.targetY;
-                        if (tx !== undefined && ty !== undefined) {
-                            remoteBeams.push({ fromX: seat.x, fromY: seat.y - 45 - LIGHTNING_SIZE * 0.35, toX: tx, toY: ty, createdAt: performance.now() });
-                            // Host processes damage from remote auto shots
-                            if (mpIsHost && enemies.length > 0) {
-                                var targetEnemy = null;
-                                var closestDist = Infinity;
-                                for (var ei = 0; ei < enemies.length; ei++) {
-                                    var e = enemies[ei];
-                                    if (!e.active || e.state === 'dying' || e.state === 'chaining' || e.state === 'detonating') continue;
-                                    var d = Math.hypot(e.x - tx, e.y - ty);
-                                    if (d < closestDist) {
-                                        closestDist = d;
-                                        targetEnemy = e;
-                                    }
-                                }
-                                var ackHit = false;
-                                var ackKilled = false;
-                                var ackDamage = 0;
-                                if (targetEnemy && closestDist < 120) {
-                                    var now = performance.now();
-                                    rtp.spend();
-                                    critState.onShot(now);
-                                    missileState.onShot();
-                                    balance -= betAmount;
-                                    targetEnemy.hitEffect = 1.0;
-                                    if (!(targetEnemy.isD3 && targetEnemy.state !== 'normal') && !(targetEnemy.isD4 && targetEnemy.state !== 'normal')) {
-                                        processBossHit(targetEnemy, now);
-                                        var roll = rtp.rollHit(targetEnemy.tierIndex, !!targetEnemy.isBoss);
-                                        var _rtpBelow = rtp.totalSpent > 0 && rtp.currentRTP() < 0.3;
-                                        var _rtpBon = _rtpBelow ? 0.25 : 0;
-                                        var inst = rng.next() < 0.005 + _rtpBon + (critState.isActive() ? 0.01 : 0);
-                                        var crit = !inst && rng.next() < 0.02 + _rtpBon + (critState.isActive() ? 0.15 : 0);
-                                        if (roll.hit || roll.instant || inst) {
-                                            spawnLightningSparks(targetEnemy.x, targetEnemy.y);
-                                            if (!inst && rollBlock(targetEnemy)) {
-                                                // blocked
-                                            } else {
-                                                var dmg = inst ? targetEnemy.hp : crit ? 3 : 2.7;
-                                                if (!inst && targetEnemy.isBoss) {
-                                                    var special = rollBossSpecial(now, targetEnemy);
-                                                    if (special > 0) dmg = special;
-                                                }
-                                                if (!inst) {
-                                                    var critRoll = critState.roll();
-                                                    if (critRoll > 1) dmg = dmg + critRoll;
-                                                }
-                                                ackHit = true;
-                                                ackDamage = dmg;
-                                                targetEnemy._payoutBet = betAmount;
-                                                targetEnemy.hp -= dmg;
-                                                if (targetEnemy.hp <= 0) {
-                                                    ackKilled = true;
-                                                    if (targetEnemy.tierIndex === 11 && targetEnemy.state !== 'dying') {
-                                                        targetEnemy.hp = 0;
-                                                        targetEnemy.state = 'dying';
-                                                        targetEnemy.dyingTimer = now;
-                                                        targetEnemy.vx = 0;
-                                                        targetEnemy.vy = 0;
-                                                        bossState.bossHp = 0;
-                                                        if (rng.next() < 0.3) {
-                                                            var r = rng.next();
-                                                            var multi = 2;
-                                                            if (r >= 0.60 && r < 0.80) multi = 3;
-                                                            else if (r >= 0.80 && r < 0.90) multi = 4;
-                                                            else if (r >= 0.90 && r < 0.98) multi = 5;
-                                                            else if (r >= 0.98) multi = 6;
-                                                            targetEnemy.dyingFinalMult = multi;
-                                                        } else {
-                                                            targetEnemy.dyingFinalMult = 1;
-                                                        }
-                                                    } else if (targetEnemy.state !== 'dying') {
-                                                        if (targetEnemy.isD3) {
-                                                            triggerD3Death(targetEnemy);
-                                                        } else {
-                                                            killEnemy(targetEnemy, enemies.indexOf(targetEnemy));
-                                                        }
-                                                    }
-                                                } else if (targetEnemy.isBoss) {
-                                                    bossState.bossHp = targetEnemy.hp;
-                                                }
-                                            }
-                                        } else if (targetEnemy.isBoss) {
-                                            bossState.hitStartTime = null;
-                                        }
-                                    }
-                                }
-                                // Send immediate ack to all clients
-                                if (socket) socket.emit('actionAck', { seatIndex: seatIdx, type: 'fireAuto', enemyX: targetEnemy ? targetEnemy.x : null, enemyY: targetEnemy ? targetEnemy.y : null, hit: ackHit, killed: ackKilled, damage: ackDamage, balance: balance });
-                            }
-                        }
-                    }
-                });
-
-                // ── Action acknowledgement from host (guests only) ──────────────────
-                socket.on('actionAck', function(data) {
-                    if (mpIsHost || !data) return;
-                    if (data.balance !== undefined) balance = data.balance;
-                    if (data.type === 'fireAuto' && data.hit && data.enemyX != null) {
-                        var ackEnemy = enemies.find(function(e) {
-                            return Math.abs(e.x - data.enemyX) < 15 && Math.abs(e.y - data.enemyY) < 15 && e.state !== 'dying';
-                        });
-                        if (ackEnemy) {
-                            spawnLightningSparks(ackEnemy.x, ackEnemy.y);
-                            ackEnemy.hitEffect = 1.0;
-                            ackEnemy.hp -= data.damage || 0;
-                            if (data.killed) {
-                                killEnemy(ackEnemy, enemies.indexOf(ackEnemy));
-                            }
-                        }
-                    }
-                });
-
-                // ── Host state snapshot received (guests only) ──────────────────────
-                socket.on('hostStateUpdate', function(data) {
-                    if (mpIsHost) return; // ignore our own echo
-                    // Track last snapshot time for interpolation
-                    mpLastHostUpdate = data.ts || performance.now();
-                    // Sync balance from host (shared economy)
-                    if (data.balance !== undefined) {
-                        balance = data.balance;
-                    }
-                    // Sync enemies from host
-                    if (data.enemies) {
-                        // Merge: keep enemies that still exist, update their state
-                        var newEnemies = data.enemies;
-                        // Remove enemies not in the host snapshot
-                        for (var i = enemies.length - 1; i >= 0; i--) {
-                            var found = newEnemies.some(function(ne) { return ne.x === enemies[i].x && ne.y === enemies[i].y && ne.tierIndex === enemies[i].tierIndex; });
-                            if (!found) { enemies.splice(i, 1); }
-                        }
-                        // Add/update enemies from host (with interpolation support)
-                        var now = performance.now();
-                        newEnemies.forEach(function(ne) {
-                            var existing = enemies.find(function(e) { return Math.abs(e.x - ne.x) < 5 && Math.abs(e.y - ne.y) < 5 && e.tierIndex === ne.tierIndex; });
-                            if (existing) {
-                                // Save current as previous for interpolation
-                                existing._prevX = existing.x;
-                                existing._prevY = existing.y;
-                                existing._lerpStart = now;
-                                existing.x = ne.x; existing.y = ne.y; existing.hp = ne.hp;
-                            } else {
-                                enemies.push({ x: ne.x, y: ne.y, size: ne.size, hp: ne.hp, maxHp: ne.maxHp, tierIndex: ne.tierIndex, vx: ne.vx || 0, vy: ne.vy || 0, isD1: !!ne.isD1, isD2: !!ne.isD2, state: ne.state || 'alive', active: true, _prevX: ne.x, _prevY: ne.y, _lerpStart: now });
-                            }
-                        });
-                    }
-                });
-            }
-
-            // Connect when page loads
-            connectSocket();
-
-            // ── Play Button (auto matchmaking) ────────────────────────────────────
-            playBtn.addEventListener('click', function() {
-                if (!socket || !socket.connected) { setPlayError('Connecting...'); return; }
-                playBtn.style.display = 'none';
-                playStatus.textContent = 'Finding table...';
-                playStatus.className = 'searching';
-                setPlayError('');
-                socket.emit('findOrCreateRoom', { name: 'Player' }, function(res) {
-                    if (!res.ok) { setPlayError(res.error); playBtn.style.display = ''; playStatus.textContent = ''; playStatus.className = ''; return; }
-                    mpRoom = res.code;
-                    mpSeat = res.seatIndex;
-                    mpIsHost = res.isHost;
-                    mpPlayers = res.players;
-                    startGame();
-                });
-            });
-
-            // ── Send player actions ───────────────────────────────────────────────
-            var mpActionThrottle = 0;
-
-            function mpSendAction(type, data) {
-                if (!socket || !mpRoom || !socket.connected) return;
-                data = data || {};
-                data.type = type;
-                socket.emit('playerAction', data);
-            }
-
-            // Wrap fireBullet to also send action
-            var _origFireBullet = fireBullet;
-            fireBullet = function() {
-                _origFireBullet();
-                if (mpRoom) {
-                    var angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-                    mpSendAction('fire', { angle: angle });
-                }
-            };
-
-            // Wrap nuke missile fire to relay to other players
-            var _origFireNukeAt = fireNukeAt;
-            fireNukeAt = function(target) {
-                _origFireNukeAt(target);
-                if (mpRoom && target) {
-                    var dx = target.x - player.x;
-                    var dy = target.y - player.y;
-                    var angle = Math.atan2(dy, dx);
-                    mpSendAction('fireNuke', { targetX: target.x, targetY: target.y, angle: angle });
-                }
-            };
-
-            // Wrap dragon strike to relay to other players
-            var _origFireDragonStrikeAt = fireDragonStrikeAt;
-            fireDragonStrikeAt = function(target, ts) {
-                _origFireDragonStrikeAt(target, ts);
-                if (mpRoom && target) {
-                    mpSendAction('fireDragon', { targetX: target.x, targetY: target.y });
-                }
-            };
 
             // Wait for assets to finish loading before starting the game loop
             function tryStartLoop() {

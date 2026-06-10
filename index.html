@@ -5754,8 +5754,9 @@
                         const refundAmount = betAmount * NUKE_STRIKE_COST_MULTIPLIER;
                         
                         balance += refundAmount;
-                        sessionTotalBets -= betAmount * 1;
-                        if (sessionTotalBets < 0) sessionTotalBets = 0;rtp.totalSpent -= betAmount * 1; // reverse only 1 shot worth (not 5) spend
+                        sessionTotalBets -= refundAmount;
+                        if (sessionTotalBets < 0) sessionTotalBets = 0;
+                        rtp.totalSpent -= betAmount;
                         nukeMissiles.splice(i, 1);
                         
                         if (refundPopups.length < MAX_REFUND_POPUPS) {
@@ -6089,17 +6090,6 @@
 
                                 autoTarget.hitEffect = 1.0;
 
-                                // Auto damage processing
-
-                                rtp.spend();
-
-                                critState.onShot(ts);
-
-                                missileState.onShot();
-
-                                balance -= betAmount; // cost of shot
-                                sessionTotalBets += betAmount;
-
                                 // D3 is invulnerable while in special states (spinning, bouncing, exploding)
                                 if (
                                     autoTarget.isD3 &&
@@ -6112,6 +6102,17 @@
                                 ) {
                                     laserAlpha = 0;
                                 } else {
+                                    // Auto damage processing
+
+                                    rtp.spend();
+
+                                    critState.onShot(ts);
+
+                                    missileState.onShot();
+
+                                    balance -= betAmount; // cost of shot
+                                    sessionTotalBets += betAmount;
+
                                     processBossHit(autoTarget, ts);
 
                                     const roll = rtp.rollHit(
@@ -10329,56 +10330,47 @@ async function fetchBalance() {
     } catch (e) { /* offline */ }
 }
 
-// Syncs pending bet/win deltas to the server.
-// Called periodically and on game exit.
+// Syncs the net balance delta to the server.
+// Called on game exit / restart — not during gameplay.
 async function syncBalanceNow() {
     if (!authToken) return;
 
     const pendingBets = sessionTotalBets - lastSyncedBets;
     const pendingWins = sessionTotalWins - lastSyncedWins;
+    const net = pendingWins - pendingBets;
 
-    if (pendingBets <= 0 && pendingWins <= 0) return;
+    if (net === 0) return;
 
     try {
-        if (pendingBets > 0) {
-            const res = await fetch(API_BASE + '/api/game/bet', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + authToken
-                },
-                body: JSON.stringify({ amount: pendingBets })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.sk_balance !== undefined) {
-                    serverBalance = data.sk_balance;
-                    balance = data.sk_balance;
-                }
-                lastSyncedBets = sessionTotalBets;
-            } else {
-                console.warn('Bet sync failed:', await res.text());
-            }
-        }
-
-        if (pendingWins > 0) {
+        if (net > 0) {
             const res = await fetch(API_BASE + '/api/game/win', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + authToken
                 },
-                body: JSON.stringify({ amount: pendingWins })
+                body: JSON.stringify({ amount: net })
             });
             if (res.ok) {
-                const data = await res.json();
-                if (data.sk_balance !== undefined) {
-                    serverBalance = data.sk_balance;
-                    balance = data.sk_balance;
-                }
+                lastSyncedBets = sessionTotalBets;
                 lastSyncedWins = sessionTotalWins;
             } else {
                 console.warn('Win sync failed:', await res.text());
+            }
+        } else {
+            const res = await fetch(API_BASE + '/api/game/bet', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + authToken
+                },
+                body: JSON.stringify({ amount: -net })
+            });
+            if (res.ok) {
+                lastSyncedBets = sessionTotalBets;
+                lastSyncedWins = sessionTotalWins;
+            } else {
+                console.warn('Bet sync failed:', await res.text());
             }
         }
     } catch (e) {
@@ -10413,25 +10405,26 @@ async function syncBalanceNow() {
     });
 })();
 
-// ── Periodic server sync (every 3 seconds during play) ─────────
-syncInterval = setInterval(() => {
-    if (gamePhase === 'playing' || gamePhase === 'intro') {
-        syncBalanceNow();
-    }
-}, 3000);
-
 // ── Sync on page unload (refresh/close) ──
+// Sends the net balance delta so server state matches what the player saw.
 window.addEventListener('beforeunload', () => {
     if (syncInterval) clearInterval(syncInterval);
-    // Periodic 3s sync should have caught pending deltas already.
-    // For any remaining wins, use a synchronous fetch with proper auth header.
     if (!authToken) return;
+    const pendingBets = sessionTotalBets - lastSyncedBets;
     const pendingWins = sessionTotalWins - lastSyncedWins;
-    if (pendingWins > 0) {
+    const net = pendingWins - pendingBets;
+    if (net > 0) {
         try {
             navigator.sendBeacon(
                 API_BASE + '/api/game/win?token=' + encodeURIComponent(authToken),
-                new Blob([JSON.stringify({ amount: pendingWins })], { type: 'application/json' })
+                new Blob([JSON.stringify({ amount: net })], { type: 'application/json' })
+            );
+        } catch (e) {}
+    } else if (net < 0) {
+        try {
+            navigator.sendBeacon(
+                API_BASE + '/api/game/bet?token=' + encodeURIComponent(authToken),
+                new Blob([JSON.stringify({ amount: -net })], { type: 'application/json' })
             );
         } catch (e) {}
     }

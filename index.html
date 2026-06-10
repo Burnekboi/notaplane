@@ -10439,12 +10439,6 @@ function flushUnsyncedDeltas() {
         hideExitConfirmation();
         savePendingDeltas();
         syncBalanceNow().finally(() => {
-            // Close the Telegram Mini App after syncing
-            try {
-                const twa = window.Telegram?.WebApp;
-                if (twa && twa.close) twa.close();
-            } catch (e) {}
-            // Fallback: navigate to dashboard
             const tokenVal = authToken || localStorage.getItem('token') || '';
             window.location.href = 'dashboard.html?token=' + encodeURIComponent(tokenVal);
         });

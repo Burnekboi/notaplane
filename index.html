@@ -1923,11 +1923,7 @@
 
             const nukeMissiles = []; // { x, y, tx, ty, vx, vy, target (enemy ref) }
 
-            const NUKE_FIRE_RATE = 310; // ms between missiles
-
             let lastTouchEnd = 0; // timestamp guard to prevent touch→mouse synthesis on Android
-
-            let lastNukeFire = 0;
 
             // Dragon Strike State
 
@@ -2522,20 +2518,14 @@
                     // If holding and hovering an enemy, fire nuke
 
                     if (isHolding && hovering) {
-                        const now = performance.now();
+                        const target = enemies.find(
+                            (en) =>
+                                isTargetable(en) &&
+                                Math.hypot(p.x - en.x, p.y - en.y) <
+                                en.size / 2 + 6,
+                        );
 
-                        if (now - lastNukeFire > NUKE_FIRE_RATE) {
-                            lastNukeFire = now;
-
-                            const target = enemies.find(
-                                (en) =>
-                                    isTargetable(en) &&
-                                    Math.hypot(p.x - en.x, p.y - en.y) <
-                                    en.size / 2 + 6,
-                            );
-
-                            if (target) fireNukeAt(target);
-                        }
+                        if (target) fireNukeAt(target);
                     }
                 } else if (dragonMode) {
                     canvas.style.cursor = "crosshair";
@@ -2591,8 +2581,6 @@
                     );
 
                     if (target) {
-                        lastNukeFire = performance.now();
-
                         fireNukeAt(target);
                     }
 
@@ -2686,7 +2674,6 @@
                             en.size / 2 + 6,
                     );
                     if (target) {
-                        lastNukeFire = performance.now();
                         fireNukeAt(target);
                     }
                     lastTouchEnd = performance.now();
@@ -2735,17 +2722,13 @@
                             en.size / 2 + 6,
                     );
                     if (hovering) {
-                        const now = performance.now();
-                        if (now - lastNukeFire > NUKE_FIRE_RATE) {
-                            lastNukeFire = now;
-                            const target = enemies.find(
-                                (en) =>
-                                    isTargetable(en) &&
-                                    Math.hypot(p.x - en.x, p.y - en.y) <
-                                    en.size / 2 + 6,
-                            );
-                            if (target) fireNukeAt(target);
-                        }
+                        const target = enemies.find(
+                            (en) =>
+                                isTargetable(en) &&
+                                Math.hypot(p.x - en.x, p.y - en.y) <
+                                en.size / 2 + 6,
+                        );
+                        if (target) fireNukeAt(target);
                     }
                 }
 
@@ -4819,7 +4802,6 @@
 
                 // Reset nuke mode
                 nukeMode = false;
-                lastNukeFire = 0;
                 missileBtn.style.boxShadow = "0 0 10px rgba(255,80,0,0.5), inset 0 0 6px rgba(255,60,0,0.15)";
                 missileBtn.style.borderColor = "#cc4400";
 
@@ -5889,11 +5871,8 @@
 
                         if (
                             autoTarget &&
-                            isTargetable(autoTarget) &&
-                            ts - lastNukeFire > NUKE_FIRE_RATE
+                            isTargetable(autoTarget)
                         ) {
-                            lastNukeFire = ts;
-
                             fireNukeAt(autoTarget);
                         }
                     }

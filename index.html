@@ -10341,13 +10341,6 @@ function lockLandscape() {
             if (twa.requestFullscreen) {
                 twa.requestFullscreen();
             }
-            // Show Telegram's header back button and intercept it
-            if (twa.BackButton) {
-                twa.BackButton.show();
-                twa.BackButton.onClick(function() {
-                    showExitConfirmation();
-                });
-            }
             // Ask for confirmation when user taps native X close button
             twa.isClosingConfirmationEnabled = true;
             if (twa.disableVerticalSwipes) {

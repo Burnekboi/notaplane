@@ -55,26 +55,97 @@
 
             #backBtn {
                 position: absolute;
-                top: 12px;
+                bottom: 20px;
                 left: 12px;
+                top: auto;
                 z-index: 20;
-                color: rgba(255,216,102,0.5);
+                color: rgba(255,216,102,0.6);
                 font: bold 14px 'Impact', 'Arial Black', sans-serif;
                 letter-spacing: 1px;
                 text-decoration: none;
                 text-shadow: 0 0 8px rgba(255,200,80,0.15);
                 transition: all 0.2s;
-                padding: 6px 12px;
-                border: 1px solid rgba(255,200,100,0.15);
+                padding: 8px 16px;
+                border: 1px solid rgba(255,200,100,0.2);
                 border-radius: 4px;
-                background: rgba(0,0,0,0.25);
+                background: rgba(0,0,0,0.35);
                 pointer-events: auto;
             }
             #backBtn:hover {
                 color: rgba(255,216,102,0.9);
                 border-color: rgba(255,200,100,0.4);
-                background: rgba(0,0,0,0.4);
+                background: rgba(0,0,0,0.5);
                 text-shadow: 0 0 12px rgba(255,200,80,0.4);
+            }
+
+            /* ── Exit confirmation overlay ── */
+            #exitOverlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 999;
+                background: rgba(0,0,0,0.65);
+                justify-content: center;
+                align-items: center;
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
+            }
+            #exitOverlay.active {
+                display: flex;
+            }
+            #exitModal {
+                background: linear-gradient(160deg, #1a1a2e, #16213e);
+                border: 1px solid rgba(255,216,102,0.25);
+                border-radius: 12px;
+                padding: 28px 32px 22px;
+                text-align: center;
+                min-width: 260px;
+                max-width: 320px;
+                box-shadow: 0 0 30px rgba(0,0,0,0.6);
+            }
+            #exitModal h2 {
+                color: #ffd866;
+                font: bold 20px 'Impact', 'Arial Black', sans-serif;
+                margin: 0 0 8px;
+                letter-spacing: 1px;
+            }
+            #exitModal p {
+                color: rgba(255,216,102,0.6);
+                font: 13px 'Segoe UI', Arial, sans-serif;
+                margin: 0 0 20px;
+            }
+            .exit-buttons {
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+            }
+            .exit-btn {
+                min-width: 90px;
+                padding: 10px 0;
+                border: 1px solid rgba(255,216,102,0.2);
+                border-radius: 6px;
+                font: bold 14px 'Impact', 'Arial Black', sans-serif;
+                letter-spacing: 1px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .exit-btn-yes {
+                color: #ff6b6b;
+                background: rgba(255,0,0,0.1);
+                border-color: rgba(255,100,100,0.3);
+            }
+            .exit-btn-yes:hover {
+                background: rgba(255,0,0,0.2);
+                border-color: rgba(255,100,100,0.5);
+            }
+            .exit-btn-no {
+                color: #ffd866;
+                background: rgba(255,216,102,0.08);
+                border-color: rgba(255,216,102,0.2);
+            }
+            .exit-btn-no:hover {
+                background: rgba(255,216,102,0.15);
+                border-color: rgba(255,216,102,0.4);
             }
 
             /* Missile button — inside canvas, right side middle */
@@ -561,6 +632,18 @@
                 <div class="rotate-icon"></div>
                 <div class="rotate-text">Please rotate your device<br>to landscape mode</div>
                 <div class="rotate-sub">Landscape mode is required to play</div>
+            </div>
+
+            <!-- ── Exit Confirmation Overlay ── -->
+            <div id="exitOverlay">
+                <div id="exitModal">
+                    <h2>EXIT GAME?</h2>
+                    <p>Your progress will be saved.</p>
+                    <div class="exit-buttons">
+                        <button class="exit-btn exit-btn-yes" id="exitConfirmYes">YES</button>
+                        <button class="exit-btn exit-btn-no" id="exitConfirmNo">NO</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -10258,6 +10341,18 @@ function lockLandscape() {
             if (twa.requestFullscreen) {
                 twa.requestFullscreen();
             }
+            // Show Telegram's header back button and intercept it
+            if (twa.BackButton) {
+                twa.BackButton.show();
+                twa.BackButton.onClick(function() {
+                    showExitConfirmation();
+                });
+            }
+            // Ask for confirmation when user taps native X close button
+            twa.isClosingConfirmationEnabled = true;
+            if (twa.disableVerticalSwipes) {
+                twa.disableVerticalSwipes();
+            }
             twa.onEvent('viewportChanged', () => {
                 checkOrientation();
                 resizeGame();
@@ -10280,6 +10375,8 @@ function initBalanceFromServer() {
     if (storedToken) {
         authToken = storedToken;
         fetchBalance();
+        // Flush any unsynced deltas from a previous session
+        flushUnsyncedDeltas();
     }
 
     // Fall back to Telegram WebApp auth
@@ -10307,6 +10404,8 @@ function initBalanceFromServer() {
                         serverBalance = data.user.sk_balance;
                         balance = data.user.sk_balance;
                     }
+                    // Flush any unsynced deltas from a previous session
+                    flushUnsyncedDeltas();
                 }
             })
             .catch(() => { /* offline mode — local balance only */ });
@@ -10378,55 +10477,107 @@ async function syncBalanceNow() {
     }
 }
 
-// ── Intercept back button to sync balance before navigating ──
-(function initBackBtn() {
-    const btn = document.getElementById('backBtn');
-    if (!btn) return;
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const targetHref = this.getAttribute('href') || 'dashboard.html';
+// ── Exit confirmation ──────────────────────────────────────────
+function showExitConfirmation() {
+    const overlay = document.getElementById('exitOverlay');
+    if (overlay) overlay.classList.add('active');
+}
 
-        // Sync balance and then navigate
-        const syncAndGo = () => {
-            // Stop periodic sync
-            if (syncInterval) {
-                clearInterval(syncInterval);
-                syncInterval = null;
-            }
-            syncBalanceNow().finally(() => {
-                // Pass token as query param so dashboard can use it
-                const sep = targetHref.includes('?') ? '&' : '?';
-                const tokenVal = authToken || localStorage.getItem('token') || '';
-                window.location.href = targetHref + sep + 'token=' + encodeURIComponent(tokenVal);
-            });
-        };
+function hideExitConfirmation() {
+    const overlay = document.getElementById('exitOverlay');
+    if (overlay) overlay.classList.remove('active');
+}
 
-        syncAndGo();
-    });
-})();
-
-// ── Sync on page unload (refresh/close) ──
-// Sends the net balance delta so server state matches what the player saw.
-window.addEventListener('beforeunload', () => {
-    if (syncInterval) clearInterval(syncInterval);
+// ── localStorage backup for unsynced deltas ────────────────────
+function savePendingDeltas() {
     if (!authToken) return;
     const pendingBets = sessionTotalBets - lastSyncedBets;
     const pendingWins = sessionTotalWins - lastSyncedWins;
     const net = pendingWins - pendingBets;
-    if (net > 0) {
-        try {
-            navigator.sendBeacon(
-                API_BASE + '/api/game/win?token=' + encodeURIComponent(authToken),
-                new Blob([JSON.stringify({ amount: net })], { type: 'application/json' })
-            );
-        } catch (e) {}
-    } else if (net < 0) {
-        try {
-            navigator.sendBeacon(
-                API_BASE + '/api/game/bet?token=' + encodeURIComponent(authToken),
-                new Blob([JSON.stringify({ amount: -net })], { type: 'application/json' })
-            );
-        } catch (e) {}
+    if (net !== 0) {
+        try { localStorage.setItem('pendingSyncNet', net.toString()); } catch (e) {}
+    } else {
+        try { localStorage.removeItem('pendingSyncNet'); } catch (e) {}
+    }
+}
+
+function flushUnsyncedDeltas() {
+    if (!authToken) return;
+    const netStr = localStorage.getItem('pendingSyncNet');
+    if (!netStr) return;
+    const net = parseInt(netStr, 10);
+    if (net === 0 || isNaN(net)) { localStorage.removeItem('pendingSyncNet'); return; }
+
+    const endpoint = net > 0 ? '/api/game/win' : '/api/game/bet';
+    const amount = net > 0 ? net : -net;
+    fetch(API_BASE + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+        body: JSON.stringify({ amount })
+    })
+    .then(r => {
+        if (r.ok) localStorage.removeItem('pendingSyncNet');
+    })
+    .catch(() => {});
+}
+
+// ── Intercept back button to show exit confirmation ──
+(function initBackBtn() {
+    const btn = document.getElementById('backBtn');
+    const yesBtn = document.getElementById('exitConfirmYes');
+    const noBtn = document.getElementById('exitConfirmNo');
+    if (!btn || !yesBtn || !noBtn) return;
+
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        showExitConfirmation();
+    });
+
+    noBtn.addEventListener('click', hideExitConfirmation);
+
+    yesBtn.addEventListener('click', function() {
+        hideExitConfirmation();
+        const targetHref = btn.getAttribute('href') || 'dashboard.html';
+        // Save to localStorage before sync for safety
+        savePendingDeltas();
+        syncBalanceNow().finally(() => {
+            const sep = targetHref.includes('?') ? '&' : '?';
+            const tokenVal = authToken || localStorage.getItem('token') || '';
+            window.location.href = targetHref + sep + 'token=' + encodeURIComponent(tokenVal);
+        });
+    });
+})();
+
+// ── Sync on page unload (refresh/close) ──
+window.addEventListener('beforeunload', () => {
+    if (syncInterval) clearInterval(syncInterval);
+    if (!authToken) return;
+
+    const pendingBets = sessionTotalBets - lastSyncedBets;
+    const pendingWins = sessionTotalWins - lastSyncedWins;
+    const net = pendingWins - pendingBets;
+    if (net === 0) {
+        try { localStorage.removeItem('pendingSyncNet'); } catch (e) {}
+        return;
+    }
+
+    // Save to localStorage as backup in case sendBeacon / beforeunload fails
+    try { localStorage.setItem('pendingSyncNet', net.toString()); } catch (e) {}
+
+    const endpoint = net > 0 ? '/api/game/win' : '/api/game/bet';
+    const amount = net > 0 ? net : -net;
+    try {
+        navigator.sendBeacon(
+            API_BASE + endpoint + '?token=' + encodeURIComponent(authToken),
+            new Blob([JSON.stringify({ amount })], { type: 'application/json' })
+        );
+    } catch (e) {}
+});
+
+// ── Also save deltas when page becomes hidden (mobile app switch / screen off) ──
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        savePendingDeltas();
     }
 });
 

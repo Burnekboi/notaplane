@@ -53,31 +53,6 @@
                 line-height: 0;
             }
 
-            #backBtn {
-                position: absolute;
-                bottom: 20px;
-                left: 12px;
-                top: auto;
-                z-index: 20;
-                color: rgba(255,216,102,0.6);
-                font: bold 14px 'Impact', 'Arial Black', sans-serif;
-                letter-spacing: 1px;
-                text-decoration: none;
-                text-shadow: 0 0 8px rgba(255,200,80,0.15);
-                transition: all 0.2s;
-                padding: 8px 16px;
-                border: 1px solid rgba(255,200,100,0.2);
-                border-radius: 4px;
-                background: rgba(0,0,0,0.35);
-                pointer-events: auto;
-            }
-            #backBtn:hover {
-                color: rgba(255,216,102,0.9);
-                border-color: rgba(255,200,100,0.4);
-                background: rgba(0,0,0,0.5);
-                text-shadow: 0 0 12px rgba(255,200,80,0.4);
-            }
-
             /* ── Exit confirmation overlay ── */
             #exitOverlay {
                 display: none;
@@ -582,7 +557,6 @@
             <canvas id="bgCanvas"></canvas>
             <canvas id="gameCanvas"></canvas>
             <canvas id="uiCanvas"></canvas>
-            <a id="backBtn" href="dashboard.html">&#8592; BACK</a>
 
             <div id="hudOverlay">
                 <div id="leftHudBox">
@@ -1036,7 +1010,7 @@
             let betAmount = 1; // cost per shot (1 unit)
             const NUKE_STRIKE_COST_MULTIPLIER = 5;
             const DRAGON_STRIKE_COST_MULTIPLIER = 7;
-            const CLICK_ANTI_SPAM = 1500; // ms between manual clicks
+            const CLICK_ANTI_SPAM = 500; // ms between manual clicks
             let lastManualClickTime = 0;
 
             let balance = 0; // net balance: wins minus shots fired
@@ -10371,6 +10345,13 @@ function lockLandscape() {
             if (twa.disableVerticalSwipes) {
                 twa.disableVerticalSwipes();
             }
+            // Use Telegram's BackButton as the exit button
+            if (twa.BackButton) {
+                twa.BackButton.show();
+                twa.BackButton.onClick(function() {
+                    showExitConfirmation();
+                });
+            }
             twa.onEvent('viewportChanged', () => {
                 checkOrientation();
                 resizeGame();
@@ -10539,29 +10520,26 @@ function flushUnsyncedDeltas() {
     .catch(() => {});
 }
 
-// ── Intercept back button to show exit confirmation ──
-(function initBackBtn() {
-    const btn = document.getElementById('backBtn');
+// ── Exit confirmation YES/NO handlers ──
+(function initExitBtns() {
     const yesBtn = document.getElementById('exitConfirmYes');
     const noBtn = document.getElementById('exitConfirmNo');
-    if (!btn || !yesBtn || !noBtn) return;
-
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        showExitConfirmation();
-    });
+    if (!yesBtn || !noBtn) return;
 
     noBtn.addEventListener('click', hideExitConfirmation);
 
     yesBtn.addEventListener('click', function() {
         hideExitConfirmation();
-        const targetHref = btn.getAttribute('href') || 'dashboard.html';
-        // Save to localStorage before sync for safety
         savePendingDeltas();
         syncBalanceNow().finally(() => {
-            const sep = targetHref.includes('?') ? '&' : '?';
+            // Close the Telegram Mini App after syncing
+            try {
+                const twa = window.Telegram?.WebApp;
+                if (twa && twa.close) twa.close();
+            } catch (e) {}
+            // Fallback: navigate to dashboard
             const tokenVal = authToken || localStorage.getItem('token') || '';
-            window.location.href = targetHref + sep + 'token=' + encodeURIComponent(tokenVal);
+            window.location.href = 'dashboard.html?token=' + encodeURIComponent(tokenVal);
         });
     });
 })();

@@ -1036,6 +1036,8 @@
             let betAmount = 1; // cost per shot (1 unit)
             const NUKE_STRIKE_COST_MULTIPLIER = 5;
             const DRAGON_STRIKE_COST_MULTIPLIER = 7;
+            const CLICK_ANTI_SPAM = 1500; // ms between manual clicks
+            let lastManualClickTime = 0;
 
             let balance = 0; // net balance: wins minus shots fired
 
@@ -2581,6 +2583,9 @@
                 if (nukeMode) {
                     isHolding = true;
 
+                    const now = performance.now();
+                    if (now - lastManualClickTime < CLICK_ANTI_SPAM) return;
+
                     // Fire immediately if over an enemy
 
                     const target = enemies.find(
@@ -2591,8 +2596,8 @@
                     );
 
                     if (target) {
+                        lastManualClickTime = now;
                         lastNukeFire = performance.now();
-
                         fireNukeAt(target);
                     }
 
@@ -2614,6 +2619,10 @@
                     }
                     return;
                 }
+
+                const now = performance.now();
+                if (now - lastManualClickTime < CLICK_ANTI_SPAM) return;
+                lastManualClickTime = now;
 
                 isHolding = true;
 
@@ -2679,6 +2688,12 @@
 
                 if (nukeMode) {
                     isHolding = true;
+                    const now = performance.now();
+                    if (now - lastManualClickTime < CLICK_ANTI_SPAM) {
+                        lastTouchEnd = performance.now();
+                        e.preventDefault();
+                        return;
+                    }
                     const target = enemies.find(
                         (en) =>
                             isTargetable(en) &&
@@ -2686,6 +2701,7 @@
                             en.size / 2 + 6,
                     );
                     if (target) {
+                        lastManualClickTime = now;
                         lastNukeFire = performance.now();
                         fireNukeAt(target);
                     }
@@ -2713,6 +2729,12 @@
                 }
 
                 // Normal bullet fire: start holding
+                const now = performance.now();
+                if (now - lastManualClickTime < CLICK_ANTI_SPAM) {
+                    e.preventDefault();
+                    return;
+                }
+                lastManualClickTime = now;
                 isHolding = true;
                 fireBullet();
                 burstInterval = setInterval(fireBullet, BURST_RATE);
@@ -10341,6 +10363,9 @@ function lockLandscape() {
             if (twa.requestFullscreen) {
                 twa.requestFullscreen();
             }
+            // Hide Telegram header chrome so close button blends into game
+            if (twa.setHeaderColor) twa.setHeaderColor('#000000');
+            if (twa.setBackgroundColor) twa.setBackgroundColor('#000000');
             // Ask for confirmation when user taps native X close button
             twa.isClosingConfirmationEnabled = true;
             if (twa.disableVerticalSwipes) {

@@ -44,15 +44,18 @@ function initBot() {
         });
       }
 
-      const balance = user.sk_balance;
-
-      await ctx.replyWithHTML(
-        `🚀 <b>Welcome, ${name}!</b>\n\n` +
-        `💰 SK Balance: <b>${balance.toLocaleString()}</b>\n\n` +
-        `Blast through waves of cosmic enemies and earn rewards!`,
-        Markup.inlineKeyboard([
-          Markup.button.webApp('🎮 Play', makeDashUrl(user)),
-        ]),
+      await ctx.replyWithPhoto(
+        { source: 'assets/intro title.png' },
+        {
+          caption:
+            `🚀 <b>Welcome, ${name}!</b>\n\n` +
+            `Blast through waves of cosmic enemies, earn rewards, and climb the ranks!\n\n` +
+            `Tap the button below to jump into the action.`,
+          parse_mode: 'HTML',
+          ...Markup.inlineKeyboard([
+            Markup.button.webApp('🎮 Play', makeDashUrl(user)),
+          ]),
+        },
       );
     } catch (err) {
       console.error('/start error:', err.message);

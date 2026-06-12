@@ -296,9 +296,12 @@
                 <div class="earnTask" id="earnDaily">
                     <div class="earnInfo">
                         <span class="earnName">Daily Check-in</span>
-                        <span class="earnDesc">Claim your daily reward</span>
+                        <span class="earnDesc" id="dailyDesc">Claim your daily reward</span>
                     </div>
-                    <div class="earnReward">+500</div>
+                    <div class="earnRight">
+                        <div class="earnReward">+500</div>
+                        <div class="earnCount" id="dailyStatus">Available</div>
+                    </div>
                 </div>
                 <div class="earnTask" id="earnInvite">
                     <div class="earnInfo">
@@ -845,8 +848,34 @@
                 }
             });
 
+            async function checkDailyStatus() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/daily/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const statusEl = document.getElementById('dailyStatus');
+                    const descEl = document.getElementById('dailyDesc');
+                    if (data.can_claim) {
+                        statusEl.textContent = 'Available';
+                        statusEl.style.color = '#5dff5d';
+                        descEl.textContent = 'Claim your daily reward';
+                    } else {
+                        statusEl.textContent = 'Claimed';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                        descEl.textContent = 'Come back tomorrow';
+                    }
+                } catch (e) {
+                    console.warn('Daily status check failed:', e);
+                }
+            }
+
             document.getElementById('earnBtn').addEventListener('click', () => {
                 document.getElementById('earnModal').style.display = 'flex';
+                checkDailyStatus();
             });
 
             document.getElementById('earnClose').addEventListener('click', () => {
@@ -859,8 +888,31 @@
                 }
             });
 
-            document.getElementById('earnDaily').addEventListener('click', () => {
-                alert('Daily Check-in — coming soon');
+            document.getElementById('earnDaily').addEventListener('click', async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return alert('Not logged in');
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/daily', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        document.getElementById('dailyStatus').textContent = 'Claimed';
+                        document.getElementById('dailyStatus').style.color = 'rgba(255,216,102,0.4)';
+                        document.getElementById('dailyDesc').textContent = 'Come back tomorrow';
+                        alert('You claimed +500 SK!');
+                    } else {
+                        const err = await res.json();
+                        alert(err.error || 'Claim failed');
+                    }
+                } catch (e) {
+                    alert('Connection error');
+                }
             });
 
             document.getElementById('earnInvite').addEventListener('click', () => {
@@ -996,6 +1048,7 @@
                 document.querySelector('#profileTokens .token:last-child .val').textContent = Number(user.skj_balance).toLocaleString();
                 updateRankProgress(user.rank, user.total_kills || 0);
                 fetchAndDisplayAchievements();
+                checkDailyStatus();
             }
 
             async function fetchAndDisplayAchievements() {

@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema({
   ne2830_kills: { type: Number, default: 0 },
   rank: { type: String, default: 'Cadet' },
   achievements_claimed: { type: [achievementClaimSchema], default: [] },
+  last_daily_claim: { type: Date, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

@@ -55,6 +55,7 @@ router.post('/telegram', async (req, res) => {
         ne2830_kills: user.ne2830_kills,
         rank: user.rank,
         achievements_claimed: user.achievements_claimed,
+        last_daily_claim: user.last_daily_claim,
       },
     });
   } catch (err) {
@@ -83,6 +84,7 @@ router.get('/me', require('../middleware/auth').authMiddleware, async (req, res)
       ne2830_kills: user.ne2830_kills,
       rank: user.rank,
       achievements_claimed: user.achievements_claimed,
+      last_daily_claim: user.last_daily_claim,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

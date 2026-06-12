@@ -30,6 +30,7 @@ app.get('/dashboard', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/game', require('./routes/game'));
+app.use('/api/earn', require('./routes/earn'));
 
 // Health check
 app.get('/api/health', (req, res) => {

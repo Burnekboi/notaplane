@@ -3,14 +3,12 @@ const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
 // Telegram WebApp URL
-// Priority:
-//   1. WEBAPP_URL env var (explicit override)
-//   2. RAILWAY_PUBLIC_DOMAIN (auto-set by Railway to the public URL of this service)
-//   3. localhost:3000 (local development default)
 const RAILWAY_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN
   ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN.replace(/^https?:\/\//, '')}`
   : null;
 const WEBAPP_URL = (process.env.WEBAPP_URL || RAILWAY_DOMAIN || 'http://localhost:3000').replace(/\/+$/, '');
+
+const CHANNEL_USERNAME = '@nirkagames';
 
 console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 
@@ -23,10 +21,49 @@ function makeDashUrl(user) {
   return `${WEBAPP_URL}/dashboard?token=${token}`;
 }
 
+let _dailyNotified = false;
+
+function getUTCDate() {
+  const d = new Date();
+  return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate();
+}
+
+function startDailyChannelNotify(bot) {
+  let lastDate = getUTCDate();
+
+  setInterval(async () => {
+    const today = getUTCDate();
+    if (today !== lastDate) {
+      lastDate = today;
+      _dailyNotified = false;
+    }
+
+    if (!_dailyNotified) {
+      const now = new Date();
+      // Fire at 00:01 UTC (give 1 min buffer after midnight)
+      if (now.getUTCHours() === 0 && now.getUTCMinutes() === 1) {
+        _dailyNotified = true;
+        try {
+          const dashUrl = WEBAPP_URL + '/dashboard';
+          await bot.telegram.sendMessage(
+            CHANNEL_USERNAME,
+            `🌅 <b>Daily Rewards Are Here!</b>\n\n` +
+            `Time to claim your <b>+500 SK</b> daily check-in bonus!\n\n` +
+            `Open the game and collect your reward.`,
+            { parse_mode: 'HTML', disable_web_page_preview: true }
+          );
+          console.log('Daily channel notification sent to', CHANNEL_USERNAME);
+        } catch (err) {
+          console.error('Failed to send daily channel notification:', err.message);
+        }
+      }
+    }
+  }, 60000);
+}
+
 function initBot() {
   const bot = new Telegraf(process.env.BOT_TOKEN);
 
-  // Remove any lingering webhook so polling works
   bot.telegram.deleteWebhook().catch(() => {});
 
   bot.start(async (ctx) => {
@@ -89,6 +126,8 @@ function initBot() {
       await ctx.reply('Sorry, something went wrong.');
     }
   });
+
+  startDailyChannelNotify(bot);
 
   return bot;
 }

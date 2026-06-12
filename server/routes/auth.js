@@ -49,6 +49,12 @@ router.post('/telegram', async (req, res) => {
         photo_url: user.photo_url,
         sk_balance: user.sk_balance,
         skj_balance: user.skj_balance,
+        total_kills: user.total_kills,
+        harbinger_kills: user.harbinger_kills,
+        spacedraco_kills: user.spacedraco_kills,
+        ne2830_kills: user.ne2830_kills,
+        rank: user.rank,
+        achievements_claimed: user.achievements_claimed,
       },
     });
   } catch (err) {
@@ -71,6 +77,12 @@ router.get('/me', require('../middleware/auth').authMiddleware, async (req, res)
       skj_balance: user.skj_balance,
       total_wagered: user.total_wagered,
       total_won: user.total_won,
+      total_kills: user.total_kills,
+      harbinger_kills: user.harbinger_kills,
+      spacedraco_kills: user.spacedraco_kills,
+      ne2830_kills: user.ne2830_kills,
+      rank: user.rank,
+      achievements_claimed: user.achievements_claimed,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

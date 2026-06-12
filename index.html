@@ -1021,6 +1021,14 @@
             let sessionTotalWins = 0;  // total SK won this session
             let lastSyncedBets = 0;    // bet amount last synced to server
             let lastSyncedWins = 0;    // win amount last synced to server
+            let sessionKills = { total: 0, harbinger: 0, spacedraco: 0, ne2830: 0 };
+
+            function addKill(e) {
+                sessionKills.total++;
+                if (e.tierIndex === 6) sessionKills.harbinger++;
+                if (e.tierIndex === 11) sessionKills.ne2830++;
+                if (e.tierIndex === 15) sessionKills.spacedraco++;
+            }
             let serverBalance = 0;     // balance fetched from server on game start
             let authToken = null;      // JWT token for API calls
             let syncInterval = null;   // periodic sync interval handle
@@ -1721,6 +1729,7 @@
 
                     scheduleBaseReward(take, 1500);
 
+                    sessionKills.total++;
                     enemies.splice(i, 1);
                 }
 
@@ -3038,6 +3047,7 @@
 
                     zapped.push({ x: en.x, y: en.y }); // save pos before splice
 
+                    sessionKills.total++;
                     enemies.splice(i, 1);
                     killCount++;
                 }
@@ -3229,6 +3239,7 @@
                     const en = enemies[i];
                     if (!vulnerable.includes(en.tierIndex) || en.isNewT1A || en.isNewT1B) continue;
                     if (Math.hypot(en.x - x, en.y - y) >= radius) continue;
+                    sessionKills.total++;
                     enemies.splice(i, 1); // kill the enemy (no reward collected)
                 }
 
@@ -3700,6 +3711,7 @@
 
                     if (Math.hypot(en.x - x, en.y - y) >= radius) continue;
 
+                    sessionKills.total++;
                     enemies.splice(i, 1); // Kill enemy (no reward collected)
                 }
             }
@@ -3922,7 +3934,7 @@
                             if (!t || !enemies.includes(t)) continue;
                             // Enemies are zapped but give 0 reward
                             const ti = enemies.indexOf(t);
-                            if (ti !== -1) enemies.splice(ti, 1);
+                            if (ti !== -1) { sessionKills.total++; enemies.splice(ti, 1); }
                         }
 
                         // D4 itself drops the reward
@@ -3957,7 +3969,7 @@
                         triggerScreenShake(15, 320);
 
                         const di = enemies.indexOf(d4);
-                        if (di !== -1) enemies.splice(di, 1);
+                        if (di !== -1) { sessionKills.total++; enemies.splice(di, 1); }
                         
                         // D4 respawn timer - 2 minutes
                         d4Active = false;
@@ -4479,6 +4491,7 @@
                     if (ts - e.t6ExplodeStart > 2500) {
                         const ei = enemies.indexOf(e);
                         if (ei !== -1) {
+                            addKill(e);
                             enemies.splice(ei, 1);
                         }
                         const tii = activeTitles.findIndex(t => t.type === 'T6');
@@ -5226,7 +5239,7 @@
                     spawnExplosionAnimation(e.x, e.y, e.tierIndex, e.size);
 
                     const d1Idx = idx !== -1 ? idx : enemies.indexOf(e);
-                    if (d1Idx !== -1) enemies.splice(d1Idx, 1);
+                    if (d1Idx !== -1) { addKill(e); enemies.splice(d1Idx, 1); }
 
                     triggerThunder(e.x, e.y, e.d1Reward);
                     return;
@@ -5234,7 +5247,7 @@
                 
                 if (e.killedByChainVariant) {
                     spawnExplosionAnimation(e.x, e.y, e.tierIndex, e.size);
-                    if (idx !== -1 && !e.isD3 && !e.isD4) enemies.splice(idx, 1);
+                    if (idx !== -1 && !e.isD3 && !e.isD4) { addKill(e); enemies.splice(idx, 1); }
                     return;
                 }
 
@@ -5432,7 +5445,7 @@
                         e.vy = 0;
 
                         const d2Idx = idx !== -1 ? idx : enemies.indexOf(e);
-                        if (d2Idx !== -1) enemies.splice(d2Idx, 1);
+                        if (d2Idx !== -1) { addKill(e); enemies.splice(d2Idx, 1); }
 
                         triggerD2Death(e.x, e.y, e.d2Reward || 0, e.isSlowed);
                     } else if (e.hp > 0 && !e.d2Triggered) {
@@ -5451,7 +5464,7 @@
 
                 // Only remove enemy if it's not D3/D4 (special death sequences handle removal)
 
-                if (idx !== -1 && !e.isD3 && !e.isD4) enemies.splice(idx, 1);
+                if (idx !== -1 && !e.isD3 && !e.isD4) { addKill(e); enemies.splice(idx, 1); }
             }
 
             function update(ts) {
@@ -5658,6 +5671,7 @@
                         const targetIndex = enemies.indexOf(m.target);
 
                         if (targetIndex !== -1) {
+                            sessionKills.total++;
                             enemies.splice(targetIndex, 1);
                         }
 
@@ -6472,6 +6486,7 @@
                             if (dur > 1000) {
                                 playDragonFireSound();
                                 spawnExplosionAnimation(e.x, e.y, e.tierIndex, e.size);
+                                addKill(e);
                                 enemies.splice(i, 1);
                             }
                             continue;
@@ -6488,10 +6503,12 @@
 
                         if (hasBonus) {
                             if (dur > 6000) {
+                                addKill(e);
                                 killEnemy(e, i);
                             }
                         } else {
                             if (dur > 4200) {
+                                addKill(e);
                                 killEnemy(e, i);
                             }
                         }
@@ -6674,6 +6691,7 @@
                         }
                         if (e.isD4) d4Active = false;
 
+                        sessionKills.total++;
                         enemies.splice(i, 1);
 
                         continue;
@@ -10337,6 +10355,25 @@ async function fetchBalance() {
 
 // Syncs the net balance delta to the server.
 // Called on game exit / restart — not during gameplay.
+async function syncKills() {
+    if (!authToken) return;
+    const kills = sessionKills;
+    if (kills.total === 0 && kills.harbinger === 0 && kills.spacedraco === 0 && kills.ne2830 === 0) return;
+    try {
+        await fetch(API_BASE + '/api/game/kills', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken
+            },
+            body: JSON.stringify(kills)
+        });
+        sessionKills = { total: 0, harbinger: 0, spacedraco: 0, ne2830: 0 };
+    } catch (e) {
+        console.warn('Kill sync failed:', e.message);
+    }
+}
+
 async function syncBalanceNow() {
     if (!authToken) return;
 
@@ -10438,7 +10475,7 @@ function flushUnsyncedDeltas() {
     yesBtn.addEventListener('click', function() {
         hideExitConfirmation();
         savePendingDeltas();
-        syncBalanceNow().finally(() => {
+        Promise.all([syncBalanceNow(), syncKills()]).finally(() => {
             const tokenVal = authToken || localStorage.getItem('token') || '';
             window.location.href = 'dashboard.html?token=' + encodeURIComponent(tokenVal);
         });

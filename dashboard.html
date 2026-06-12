@@ -79,6 +79,33 @@
                 gap: 16px;
                 margin-left: auto;
             }
+            .rankProgress {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 4px;
+                width: 100%;
+            }
+            .rankBar {
+                flex: 1;
+                height: 6px;
+                background: rgba(255,200,100,0.15);
+                border-radius: 3px;
+                overflow: hidden;
+            }
+            .rankBarFill {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #ffd866, #ffaa44);
+                border-radius: 3px;
+                transition: width 0.4s;
+            }
+            .rankBarLabel {
+                font-size: 10px;
+                color: rgba(255,216,102,0.5);
+                white-space: nowrap;
+                font-family: Arial, sans-serif;
+            }
             #profileTokens .token {
                 text-align: right;
             }
@@ -138,6 +165,10 @@
                     <span class="name">Christian Jake</span>
                     <span class="id">ID: SJK-0001</span>
                     <span class="rank">Cadet</span>
+                    <div class="rankProgress">
+                        <div class="rankBar"><div class="rankBarFill" id="rankBarFill"></div></div>
+                        <span class="rankBarLabel" id="rankBarLabel">0 / 1000</span>
+                    </div>
                 </div>
                 <div id="profileTokens">
                     <div class="token">
@@ -179,57 +210,83 @@
             <div id="achievementsContent">
                 <button id="achievementsClose" type="button">&times;</button>
                 <h2>ACHIEVEMENTS</h2>
-                <div class="achievement">
+                <div class="achievement" data-ach-id="harbinger">
                     <div class="achSpriteWrap" id="achHarbinger"></div>
                     <div class="achInfo">
                         <span class="achName">Harbinger</span>
                         <span class="achTask">Kill Harbinger 100 times</span>
-                        <span class="achStatus">0 / 100</span>
+                        <span class="achStatus" id="achStatus-harbinger">0 / 100</span>
                     </div>
-                    <div class="achReward">10,000 SK Tokens</div>
+                    <div class="achRight">
+                        <div class="achReward">10,000 SK Tokens</div>
+                        <button class="achClaimBtn" id="claimBtn-harbinger" style="display:none">Claim</button>
+                    </div>
                 </div>
-                <div class="achievement">
+                <div class="achievement" data-ach-id="spacedraco">
                     <div class="achSpriteWrap" id="achSpaceDraco"></div>
                     <div class="achInfo">
                         <span class="achName">SpaceDraco</span>
                         <span class="achTask">Kill SpaceDraco 100 times</span>
-                        <span class="achStatus">0 / 100</span>
+                        <span class="achStatus" id="achStatus-spacedraco">0 / 100</span>
                     </div>
-                    <div class="achReward">10,000 SK Tokens</div>
+                    <div class="achRight">
+                        <div class="achReward">10,000 SK Tokens</div>
+                        <button class="achClaimBtn" id="claimBtn-spacedraco" style="display:none">Claim</button>
+                    </div>
                 </div>
-                <div class="achievement">
+                <div class="achievement" data-ach-id="ne2830">
                     <div class="achSpriteWrap" id="achNE2830"></div>
                     <div class="achInfo">
                         <span class="achName">NE-2830</span>
                         <span class="achTask">Kill NE-2830 100 times</span>
-                        <span class="achStatus">0 / 100</span>
+                        <span class="achStatus" id="achStatus-ne2830">0 / 100</span>
                     </div>
-                    <div class="achReward">10,000 SK Tokens</div>
+                    <div class="achRight">
+                        <div class="achReward">10,000 SK Tokens</div>
+                        <button class="achClaimBtn" id="claimBtn-ne2830" style="display:none">Claim</button>
+                    </div>
                 </div>
-                <div class="achievement">
+                <div class="achievement" data-ach-id="ensign">
                     <div class="achSpriteWrap"></div>
                     <div class="achInfo">
                         <span class="achName">Ensign</span>
                         <span class="achTask">Rank up to Ensign</span>
                     </div>
-                    <div class="achReward">5,000 SK Tokens</div>
+                    <div class="achRight">
+                        <div class="achReward">5,000 SK Tokens</div>
+                        <button class="achClaimBtn" id="claimBtn-ensign" style="display:none">Claim</button>
+                    </div>
                 </div>
-                <div class="achievement">
+                <div class="achievement" data-ach-id="lieutenant">
                     <div class="achSpriteWrap"></div>
                     <div class="achInfo">
                         <span class="achName">Lieutenant</span>
                         <span class="achTask">Rank up to Lieutenant</span>
                     </div>
-                    <div class="achReward">15,000 SK Tokens</div>
+                    <div class="achRight">
+                        <div class="achReward">15,000 SK Tokens</div>
+                        <button class="achClaimBtn" id="claimBtn-lieutenant" style="display:none">Claim</button>
+                    </div>
                 </div>
-                <div class="achievement">
+                <div class="achievement" data-ach-id="commander">
                     <div class="achSpriteWrap"></div>
                     <div class="achInfo">
                         <span class="achName">Commander</span>
                         <span class="achTask">Rank up to Commander</span>
                     </div>
-                    <div class="achReward">50,000 SK Tokens</div>
+                    <div class="achRight">
+                        <div class="achReward">50,000 SK Tokens</div>
+                        <button class="achClaimBtn" id="claimBtn-commander" style="display:none">Claim</button>
+                    </div>
                 </div>
+            </div>
+        </div>
+        <div id="rankupModal" style="display:none">
+            <div id="rankupContent">
+                <h2 id="rankupTitle">CONGRATULATIONS!</h2>
+                <p id="rankupMsg">You've been promoted to <strong id="rankupRankName">Ensign</strong>!</p>
+                <p id="rankupReward">+<span id="rankupRewardAmt">5,000</span> SK Tokens</p>
+                <button id="rankupClose" type="button">AWESOME!</button>
             </div>
         </div>
         <div id="earnModal">
@@ -264,6 +321,72 @@
         </div>
 
         <style>
+            #rankupModal {
+                display: none;
+                position: fixed;
+                z-index: 20;
+                left: 0; top: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8);
+                justify-content: center;
+                align-items: center;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+            }
+            #rankupContent {
+                background: #111;
+                border: 2px solid rgba(255,200,100,0.6);
+                border-radius: 12px;
+                padding: 35px 40px;
+                max-width: 380px;
+                width: 90%;
+                text-align: center;
+                color: #ffd866;
+                box-shadow: 0 0 60px rgba(255,200,80,0.3);
+                animation: rankupPulse 0.5s ease;
+            }
+            @keyframes rankupPulse {
+                0% { transform: scale(0.5); opacity: 0; }
+                60% { transform: scale(1.1); }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            #rankupContent h2 {
+                font-size: 26px;
+                letter-spacing: 3px;
+                margin-bottom: 10px;
+                color: #fff3bf;
+            }
+            #rankupContent p {
+                font-size: 16px;
+                font-family: Arial, sans-serif;
+                color: #ccc;
+                margin: 6px 0;
+                line-height: 1.5;
+            }
+            #rankupContent p strong {
+                color: #ffd866;
+                font-size: 18px;
+            }
+            #rankupReward {
+                font-size: 18px !important;
+                color: #5dff5d !important;
+                margin: 12px 0 20px !important;
+            }
+            #rankupClose {
+                padding: 10px 30px;
+                border: 2px solid rgba(255,200,100,0.5);
+                border-radius: 6px;
+                background: linear-gradient(180deg, rgba(255,200,100,0.2), rgba(200,140,40,0.1));
+                color: #ffd866;
+                font: bold 18px 'Impact', 'Arial Black', sans-serif;
+                letter-spacing: 2px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            #rankupClose:hover {
+                background: linear-gradient(180deg, rgba(255,200,100,0.35), rgba(200,140,40,0.2));
+                border-color: rgba(255,220,140,0.7);
+                transform: scale(1.05);
+            }
             #aboutModal {
                 display: none;
                 position: fixed;
@@ -487,12 +610,47 @@
                 font-family: Arial, sans-serif;
                 color: rgba(255,216,102,0.4);
             }
+            .achRight {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 6px;
+            }
             .achReward {
                 font-size: 13px;
                 color: #ffaa44;
                 text-align: right;
                 white-space: nowrap;
                 letter-spacing: 1px;
+            }
+            .achClaimBtn {
+                padding: 4px 14px;
+                border: 1px solid rgba(255,200,100,0.4);
+                border-radius: 4px;
+                background: linear-gradient(180deg, rgba(255,200,100,0.2), rgba(200,140,40,0.1));
+                color: #ffd866;
+                font: bold 11px 'Impact', 'Arial Black', sans-serif;
+                letter-spacing: 1px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .achClaimBtn:hover {
+                background: linear-gradient(180deg, rgba(255,200,100,0.35), rgba(200,140,40,0.2));
+                border-color: rgba(255,220,140,0.7);
+            }
+            .achClaimBtn:active {
+                transform: scale(0.95);
+            }
+            .achClaimBtn.claimed {
+                background: rgba(100,200,100,0.15);
+                border-color: rgba(100,200,100,0.3);
+                color: rgba(100,200,100,0.6);
+                cursor: default;
+                pointer-events: none;
+            }
+            .achievement.completed {
+                border-color: rgba(100,200,100,0.2);
+                background: rgba(100,200,100,0.05);
             }
         </style>
         <script>
@@ -753,6 +911,11 @@
                         });
                         if (res.ok) {
                             const user = await res.json();
+                            const prevRank = localStorage.getItem('playerRank');
+                            if (prevRank && user.rank && user.rank !== prevRank) {
+                                showRankUpPopup(user.rank);
+                            }
+                            localStorage.setItem('playerRank', user.rank || 'Cadet');
                             updateDashboard(user);
                             return;
                         }
@@ -784,13 +947,45 @@
                             photo_url: user.photo_url,
                         })
                     });
-                    const data = await res.json();
-                    if (data.token) {
-                        localStorage.setItem('token', data.token);
-                        updateDashboard(data.user);
+                const data = await res.json();
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    const prevRank = localStorage.getItem('playerRank');
+                    if (prevRank && data.user.rank && data.user.rank !== prevRank) {
+                        showRankUpPopup(data.user.rank);
                     }
+                    localStorage.setItem('playerRank', data.user.rank || 'Cadet');
+                    updateDashboard(data.user);
+                }
                 } catch (err) {
                     console.error('Auth failed:', err);
+                }
+            }
+
+            const RANK_THRESHOLDS = [
+                { kills: 1000, rank: 'Ensign' },
+                { kills: 10000, rank: 'Lieutenant' },
+                { kills: 100000, rank: 'Commander' },
+            ];
+
+            function updateRankProgress(rank, totalKills) {
+                document.querySelector('#profileInfo .rank').textContent = rank || 'Cadet';
+                let next = null;
+                let current = 0;
+                let max = 0;
+                for (const r of RANK_THRESHOLDS) {
+                    if (totalKills < r.kills) { next = r; break; }
+                }
+                if (next) {
+                    const prevThreshold = RANK_THRESHOLDS[RANK_THRESHOLDS.indexOf(next) - 1];
+                    current = prevThreshold ? totalKills - prevThreshold.kills : totalKills;
+                    max = next.kills - (prevThreshold ? prevThreshold.kills : 0);
+                    const pct = Math.min((current / max) * 100, 100);
+                    document.getElementById('rankBarFill').style.width = pct + '%';
+                    document.getElementById('rankBarLabel').textContent = totalKills.toLocaleString() + ' / ' + next.kills.toLocaleString();
+                } else {
+                    document.getElementById('rankBarFill').style.width = '100%';
+                    document.getElementById('rankBarLabel').textContent = totalKills.toLocaleString() + ' / ' + totalKills.toLocaleString();
                 }
             }
 
@@ -799,7 +994,95 @@
                 document.querySelector('#profileInfo .id').textContent = 'ID: SKJ-' + String(user.telegram_id).slice(-4).padStart(4, '0');
                 document.querySelector('#profileTokens .token:first-child .val').textContent = Number(user.sk_balance).toLocaleString();
                 document.querySelector('#profileTokens .token:last-child .val').textContent = Number(user.skj_balance).toLocaleString();
+                updateRankProgress(user.rank, user.total_kills || 0);
+                fetchAndDisplayAchievements();
             }
+
+            async function fetchAndDisplayAchievements() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/game/achievements', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const achievements = data.achievements || [];
+                    for (const ach of achievements) {
+                        const statusEl = document.getElementById('achStatus-' + ach.id);
+                        if (statusEl) {
+                            statusEl.textContent = ach.progress + ' / ' + ach.max;
+                        }
+                        const claimBtn = document.getElementById('claimBtn-' + ach.id);
+                        if (claimBtn) {
+                            if (ach.claimed) {
+                                claimBtn.textContent = 'Claimed';
+                                claimBtn.className = 'achClaimBtn claimed';
+                                claimBtn.style.display = '';
+                                document.querySelector('.achievement[data-ach-id="' + ach.id + '"]')?.classList.add('completed');
+                            } else if (ach.completed) {
+                                claimBtn.textContent = 'Claim';
+                                claimBtn.style.display = '';
+                                claimBtn.className = 'achClaimBtn';
+                                claimBtn.onclick = function() { claimAchievement(ach.id); };
+                            } else {
+                                claimBtn.style.display = 'none';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch achievements:', e);
+                }
+            }
+
+            async function claimAchievement(achievementId) {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                const btn = document.getElementById('claimBtn-' + achievementId);
+                if (btn) btn.disabled = true;
+                try {
+                    const res = await fetch(API_BASE + '/api/game/achievements/claim', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({ achievementId })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        btn.textContent = 'Claimed';
+                        btn.className = 'achClaimBtn claimed';
+                        btn.disabled = false;
+                        document.querySelector('.achievement[data-ach-id="' + achievementId + '"]')?.classList.add('completed');
+                    } else {
+                        const err = await res.json();
+                        console.warn('Claim failed:', err.error);
+                        if (btn) btn.disabled = false;
+                    }
+                } catch (e) {
+                    console.warn('Claim error:', e);
+                    if (btn) btn.disabled = false;
+                }
+            }
+
+            function showRankUpPopup(newRank) {
+                const rewards = { 'Ensign': '5,000', 'Lieutenant': '15,000', 'Commander': '50,000' };
+                document.getElementById('rankupRankName').textContent = newRank;
+                document.getElementById('rankupRewardAmt').textContent = rewards[newRank] || '0';
+                document.getElementById('rankupModal').style.display = 'flex';
+            }
+
+            document.getElementById('rankupClose').addEventListener('click', () => {
+                document.getElementById('rankupModal').style.display = 'none';
+            });
+
+            document.getElementById('rankupModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    document.getElementById('rankupModal').style.display = 'none';
+                }
+            });
 
             initAuth();
 

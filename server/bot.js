@@ -2,7 +2,6 @@ const { Telegraf, Markup } = require('telegraf');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
-// Telegram WebApp URL
 const RAILWAY_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN
   ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN.replace(/^https?:\/\//, '')}`
   : null;
@@ -28,6 +27,14 @@ function getUTCDate() {
   return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate();
 }
 
+function makeReferralCode(user) {
+  return 'SKJ' + user.telegram_id;
+}
+
+function makeReferralLink(referralCode) {
+  return `https://t.me/SKJackpotbot?start=${referralCode}`;
+}
+
 function startDailyChannelNotify(bot) {
   let lastDate = getUTCDate();
 
@@ -40,11 +47,9 @@ function startDailyChannelNotify(bot) {
 
     if (!_dailyNotified) {
       const now = new Date();
-      // Fire at 00:01 UTC (give 1 min buffer after midnight)
       if (now.getUTCHours() === 0 && now.getUTCMinutes() === 1) {
         _dailyNotified = true;
         try {
-          const dashUrl = WEBAPP_URL + '/dashboard';
           await bot.telegram.sendMessage(
             CHANNEL_USERNAME,
             `🌅 <b>Daily Rewards Are Here!</b>\n\n` +
@@ -68,6 +73,14 @@ function initBot() {
 
   bot.start(async (ctx) => {
     try {
+      const payload = ctx.payload || '';
+      let referrerCode = null;
+
+      // Check if this is a referral start (deep link with code)
+      if (payload && payload.startsWith('SKJ')) {
+        referrerCode = payload;
+      }
+
       let user = await User.findOne({ telegram_id: ctx.from.id });
       const name = ctx.from.first_name || 'Player';
 
@@ -78,22 +91,52 @@ function initBot() {
           first_name: ctx.from.first_name || null,
           last_name: ctx.from.last_name || null,
           sk_balance: 1000,
+          referral_code: makeReferralCode({ telegram_id: ctx.from.id }),
         });
-      }
 
-      await ctx.replyWithPhoto(
-        { source: 'assets/intro title.png' },
-        {
-          caption:
-            `🚀 <b>Welcome, ${name}!</b>\n\n` +
-            `Blast through waves of cosmic enemies, earn rewards, and climb the ranks!\n\n` +
-            `Tap the button below to jump into the action.`,
-          parse_mode: 'HTML',
-          ...Markup.inlineKeyboard([
-            Markup.button.webApp('🎮 Play', makeDashUrl(user)),
-          ]),
-        },
-      );
+        // If referred, add to referrer's list
+        if (referrerCode) {
+          const referrer = await User.findOne({ referral_code: referrerCode });
+          if (referrer) {
+            user.referred_by = referrer._id;
+            await user.save();
+            referrer.referrals.push({
+              user_id: user._id,
+              verified: false,
+              reward_claimed: false,
+            });
+            await referrer.save();
+          }
+        }
+
+        await ctx.replyWithPhoto(
+          { source: 'assets/intro title.png' },
+          {
+            caption:
+              `🚀 <b>Welcome, ${name}!</b>\n\n` +
+              `Blast through waves of cosmic enemies, earn rewards, and climb the ranks!\n\n` +
+              `Tap the button below to jump into the action.`,
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+              Markup.button.webApp('🎮 Play', makeDashUrl(user)),
+            ]),
+          },
+        );
+      } else {
+        // Existing user
+        await ctx.replyWithPhoto(
+          { source: 'assets/intro title.png' },
+          {
+            caption:
+              `🚀 <b>Welcome back, ${name}!</b>\n\n` +
+              `Jump back into the action!`,
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+              Markup.button.webApp('🎮 Play', makeDashUrl(user)),
+            ]),
+          },
+        );
+      }
     } catch (err) {
       console.error('/start error:', err.message);
       await ctx.reply('Sorry, something went wrong. Try again later.');
@@ -105,6 +148,7 @@ function initBot() {
       'Commands:\n' +
       '/start - Show main menu\n' +
       '/balance - Check your SK balance\n' +
+      '/referral - Get your referral link\n' +
       '/help - Show this message'
     );
   });
@@ -123,6 +167,33 @@ function initBot() {
       }
     } catch (err) {
       console.error('/balance error:', err.message);
+      await ctx.reply('Sorry, something went wrong.');
+    }
+  });
+
+  bot.command('referral', async (ctx) => {
+    try {
+      let user = await User.findOne({ telegram_id: ctx.from.id });
+      if (!user) {
+        return ctx.reply('You haven\'t started yet! Use /start to register.');
+      }
+
+      if (!user.referral_code) {
+        user.referral_code = makeReferralCode(user);
+        await user.save();
+      }
+
+      const link = makeReferralLink(user.referral_code);
+      const verifiedCount = (user.referrals || []).filter(r => r.verified).length;
+
+      await ctx.replyWithHTML(
+        `👥 <b>Your Referral Link</b>\n\n` +
+        `Share this link with friends:\n<code>${link}</code>\n\n` +
+        `When they join and play, you earn <b>+1,000 SK</b> each!\n\n` +
+        `✅ Verified referrals: <b>${verifiedCount} / 10</b>`
+      );
+    } catch (err) {
+      console.error('/referral error:', err.message);
       await ctx.reply('Sorry, something went wrong.');
     }
   });

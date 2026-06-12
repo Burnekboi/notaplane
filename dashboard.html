@@ -306,11 +306,11 @@
                 <div class="earnTask" id="earnInvite">
                     <div class="earnInfo">
                         <span class="earnName">Invite Friends</span>
-                        <span class="earnDesc">+1000 per invite (max 10)</span>
+                        <span class="earnDesc" id="inviteDesc">+1000 per invite (max 10)</span>
                     </div>
                     <div class="earnRight">
                         <div class="earnReward">+1000</div>
-                        <div class="earnCount">0 / 10</div>
+                        <div class="earnCount" id="inviteCount">0 / 10</div>
                     </div>
                 </div>
                 <div class="earnTask" id="earnTG">
@@ -876,6 +876,7 @@
             document.getElementById('earnBtn').addEventListener('click', () => {
                 document.getElementById('earnModal').style.display = 'flex';
                 checkDailyStatus();
+                checkReferralStatus();
             });
 
             document.getElementById('earnClose').addEventListener('click', () => {
@@ -915,8 +916,53 @@
                 }
             });
 
-            document.getElementById('earnInvite').addEventListener('click', () => {
-                alert('Invite Friends — coming soon');
+            async function checkReferralStatus() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/referral', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    document.getElementById('inviteCount').textContent = data.verified_count + ' / ' + data.max_referrals;
+                } catch (e) {
+                    console.warn('Referral status check failed:', e);
+                }
+            }
+
+            document.getElementById('earnInvite').addEventListener('click', async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return alert('Not logged in');
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/referral', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return alert('Failed to load referral info');
+                    const data = await res.json();
+
+                    // Copy to clipboard
+                    try {
+                        await navigator.clipboard.writeText(data.referral_link);
+                    } catch (e) {
+                        // Fallback
+                        const textArea = document.createElement('textarea');
+                        textArea.value = data.referral_link;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                    }
+
+                    alert(
+                        'Your referral link has been copied!\n\n' +
+                        data.referral_link + '\n\n' +
+                        'Share it with friends. When they join and play, you earn +1,000 SK each!\n' +
+                        'Verified: ' + data.verified_count + ' / ' + data.max_referrals
+                    );
+                } catch (e) {
+                    alert('Connection error');
+                }
             });
 
             document.getElementById('earnTG').addEventListener('click', () => {
@@ -1049,6 +1095,7 @@
                 updateRankProgress(user.rank, user.total_kills || 0);
                 fetchAndDisplayAchievements();
                 checkDailyStatus();
+                checkReferralStatus();
             }
 
             async function fetchAndDisplayAchievements() {

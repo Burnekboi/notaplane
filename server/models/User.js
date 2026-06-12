@@ -5,6 +5,13 @@ const achievementClaimSchema = new mongoose.Schema({
   claimed_at: { type: Date, default: Date.now },
 }, { _id: false });
 
+const referralEntrySchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  verified: { type: Boolean, default: false },
+  reward_claimed: { type: Boolean, default: false },
+  verified_at: Date,
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   telegram_id: { type: Number, required: true, unique: true },
   username: String,
@@ -22,6 +29,10 @@ const userSchema = new mongoose.Schema({
   rank: { type: String, default: 'Cadet' },
   achievements_claimed: { type: [achievementClaimSchema], default: [] },
   last_daily_claim: { type: Date, default: null },
+  referral_code: { type: String, unique: true, sparse: true },
+  referred_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  referral_verified: { type: Boolean, default: false },
+  referrals: { type: [referralEntrySchema], default: [] },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

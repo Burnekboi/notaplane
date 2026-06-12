@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
     <head>
-        <title>Space King Jackpot — Dashboard</title>
+        <title>Space King Jackpot</title>
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -984,7 +984,16 @@
             });
         </script>
         <script>
-
+            // Initialize Telegram WebApp to hide URL header
+            try {
+                const tg = window.Telegram?.WebApp;
+                if (tg) {
+                    tg.expand();
+                    tg.ready();
+                    tg.setHeaderColor('#000000');
+                    tg.setBackgroundColor('#000000');
+                }
+            } catch (e) {}
         </script>
         <script>
             // API is served from the same origin (Telegram WebApp / Express server)

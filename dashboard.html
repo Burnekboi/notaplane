@@ -316,9 +316,12 @@
                 <div class="earnTask" id="earnTG">
                     <div class="earnInfo">
                         <span class="earnName">Join TG Channel</span>
-                        <span class="earnDesc">Follow our Telegram channel</span>
+                        <span class="earnDesc" id="tgDesc">Follow @nirkagames</span>
                     </div>
-                    <div class="earnReward">+??</div>
+                    <div class="earnRight">
+                        <div class="earnReward">+1,000</div>
+                        <div class="earnCount" id="tgStatus">Claim</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -949,6 +952,7 @@
                 document.getElementById('earnModal').style.display = 'flex';
                 checkDailyStatus();
                 checkReferralStatus();
+                checkTgChannelStatus();
             });
 
             document.getElementById('earnClose').addEventListener('click', () => {
@@ -1037,9 +1041,71 @@
                 }
             });
 
-            document.getElementById('earnTG').addEventListener('click', () => {
-                showNotif('Join TG Channel — coming soon');
+            async function checkTgChannelStatus() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/tg-channel/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const statusEl = document.getElementById('tgStatus');
+                    if (data.claimed) {
+                        statusEl.textContent = 'Claimed';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                        document.getElementById('tgDesc').textContent = 'Reward claimed';
+                    } else {
+                        statusEl.textContent = 'Claim';
+                        statusEl.style.color = '#5dff5d';
+                        document.getElementById('tgDesc').textContent = 'Follow @nirkagames';
+                    }
+                } catch (e) {}
+            }
+
+            document.getElementById('earnTG').addEventListener('click', async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return showNotif('Not logged in');
+
+                // Check status first
+                try {
+                    const statusRes = await fetch(API_BASE + '/api/earn/tg-channel/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const statusData = await statusRes.json();
+                    if (statusData.claimed) {
+                        return showNotif('You already claimed this reward!');
+                    }
+                } catch (e) {}
+
+                // Open channel link in a new window
+                window.open('https://t.me/nirkagames', '_blank');
+
+                // Try to claim
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/tg-channel', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        document.getElementById('tgStatus').textContent = 'Claimed';
+                        document.getElementById('tgStatus').style.color = 'rgba(255,216,102,0.4)';
+                        document.getElementById('tgDesc').textContent = 'Reward claimed';
+                        showNotif('You claimed +1,000 SK!');
+                    } else {
+                        showNotif(data.error || 'Join @nirkagames first, then try again');
+                    }
+                } catch (e) {
+                    showNotif('Join @nirkagames first, then try again');
+                }
             });
+
+
 
             document.getElementById('aboutBtn').addEventListener('click', () => {
                 document.getElementById('aboutModal').style.display = 'flex';
@@ -1177,6 +1243,7 @@
                 fetchAndDisplayAchievements();
                 checkDailyStatus();
                 checkReferralStatus();
+                checkTgChannelStatus();
             }
 
             async function fetchAndDisplayAchievements() {

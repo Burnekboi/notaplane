@@ -112,6 +112,7 @@ router.post('/telegram', async (req, res) => {
         last_daily_claim: user.last_daily_claim,
         referral_code: user.referral_code,
         verified_referrals: verifiedReferrals,
+        tg_channel_claimed: user.tg_channel_claimed || false,
       },
     });
   } catch (err) {
@@ -146,6 +147,7 @@ router.get('/me', require('../middleware/auth').authMiddleware, async (req, res)
       last_daily_claim: user.last_daily_claim,
       referral_code: user.referral_code,
       verified_referrals: verifiedReferrals,
+      tg_channel_claimed: user.tg_channel_claimed || false,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

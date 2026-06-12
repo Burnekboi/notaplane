@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema({
   referred_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   referral_verified: { type: Boolean, default: false },
   referrals: { type: [referralEntrySchema], default: [] },
+  tg_channel_claimed: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

@@ -60,6 +60,7 @@ const hasBotToken = process.env.BOT_TOKEN && process.env.BOT_TOKEN !== 'your_tel
 
 if (hasBotToken) {
   const bot = initBot();
+  app.locals.bot = bot;
   bot.launch().then(() => {
     console.log('Telegram bot started');
   }).catch(err => {

@@ -10,6 +10,8 @@ router.use(authMiddleware);
 const DAILY_REWARD = 500;
 const REFERRAL_REWARD = 1000;
 const MAX_REFERRALS = 10;
+const TG_CHANNEL_REWARD = 1000;
+const CHANNEL_USERNAME = '@nirkagames';
 
 function getUTCMidnight() {
   const now = new Date();
@@ -93,6 +95,70 @@ router.get('/referral', async (req, res) => {
       verified_count: verifiedCount,
       max_referrals: MAX_REFERRALS,
       reward_per_referral: REFERRAL_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/tg-channel', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.tg_channel_claimed) {
+      return res.status(400).json({ error: 'Already claimed' });
+    }
+
+    // Verify channel membership via bot
+    const bot = req.app.locals.bot;
+    if (!bot) return res.status(503).json({ error: 'Verification unavailable' });
+
+    try {
+      const member = await bot.telegram.getChatMember(CHANNEL_USERNAME, user.telegram_id);
+      const status = member.status;
+      if (status === 'left' || status === 'kicked') {
+        return res.status(400).json({ error: 'You must join @nirkagames first' });
+      }
+    } catch (err) {
+      console.error('TG channel check failed:', err.message);
+      return res.status(503).json({ error: 'Could not verify membership' });
+    }
+
+    const balanceBefore = user.sk_balance;
+    user.sk_balance += TG_CHANNEL_REWARD;
+    user.tg_channel_claimed = true;
+
+    await Transaction.create({
+      user_id: user._id,
+      type: 'earn',
+      token: 'SK',
+      amount: TG_CHANNEL_REWARD,
+      balance_before: balanceBefore,
+      balance_after: user.sk_balance,
+      reference: 'tg_channel',
+    });
+
+    await user.save();
+
+    res.json({
+      sk_balance: user.sk_balance,
+      reward: TG_CHANNEL_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/tg-channel/status', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({
+      claimed: user.tg_channel_claimed || false,
+      reward: TG_CHANNEL_REWARD,
+      channel: CHANNEL_USERNAME,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

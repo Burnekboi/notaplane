@@ -656,16 +656,17 @@
             .achievement {
                 display: flex;
                 align-items: center;
-                gap: 14px;
+                gap: 10px;
                 background: rgba(255,200,100,0.05);
                 border: 1px solid rgba(255,200,100,0.12);
                 border-radius: 8px;
-                padding: 12px 16px;
+                padding: 16px;
                 margin-bottom: 10px;
+                min-height: 72px;
             }
             .achSpriteWrap {
-                width: 44px;
-                height: 44px;
+                width: 48px;
+                height: 48px;
                 border-radius: 4px;
                 background-color: rgba(0,0,0,0.3);
                 background-repeat: no-repeat;
@@ -676,7 +677,8 @@
                 flex: 1;
                 display: flex;
                 flex-direction: column;
-                gap: 2px;
+                gap: 1px;
+                min-width: 0;
             }
             .achName {
                 font-size: 15px;
@@ -697,7 +699,9 @@
                 display: flex;
                 flex-direction: column;
                 align-items: flex-end;
-                gap: 6px;
+                justify-content: center;
+                gap: 2px;
+                min-width: 110px;
             }
             .achReward {
                 font-size: 13px;
@@ -720,6 +724,7 @@
                 letter-spacing: 1px;
                 cursor: pointer;
                 transition: all 0.2s;
+                margin-top: 2px;
             }
             .achClaimBtn:hover {
                 background: linear-gradient(180deg, rgba(255,200,100,0.35), rgba(200,140,40,0.2));
@@ -1440,14 +1445,14 @@
                         const col = data.fi % data.cols.length;
                         const row = Math.floor(data.fi / data.cols.length);
                         const sx = data.cols[col], sy = data.rows[row];
-                        const s = Math.max(44 / data.fw, 44 / data.fh);
+                        const s = Math.max(48 / data.fw, 48 / data.fh);
                         el.style.backgroundImage = 'url(' + data.src + ')';
                         el.style.backgroundSize = (img.naturalWidth * s) + 'px ' + (img.naturalHeight * s) + 'px';
                         el.style.backgroundPosition = (-sx * s) + 'px ' + (-sy * s) + 'px';
                     } else {
                         const cw = img.naturalWidth / data.cols;
                         const ch = img.naturalHeight / data.rows;
-                        const s = Math.max(44 / cw, 44 / ch);
+                        const s = Math.max(48 / cw, 48 / ch);
                         const col = data.fi % data.cols;
                         const row = Math.floor(data.fi / data.cols);
                         el.style.backgroundImage = 'url(' + data.src + ')';

@@ -3,6 +3,7 @@
     <head>
         <title>Space King Jackpot</title>
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <script src="tonconnect-ui.min.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -1620,21 +1621,12 @@
                 }
             });
 
-            // ── TON Wallet ─────────────────────────────────────────────────────
+            // ── TON Wallet (TonConnect) ───────────────────────────────────────
             let tonWallet = null;
-            let walletBridgeWs = null;
-            let walletClientId = null;
-            let walletPendingTimeout = null;
+            let tonConnectUI = null;
             const walletBtn = document.getElementById('walletBtn');
             const walletDot = document.getElementById('walletDot');
             const walletBtnText = document.getElementById('walletBtnText');
-
-            const TON_BRIDGE = 'wss://bridge.tonapi.io/bridge/events';
-            const TONKEEPER_CONNECT = 'https://app.tonkeeper.com/ton-connect/v2/connect';
-
-            function generateId() {
-                return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-            }
 
             function updateWalletUI(walletInfo) {
                 if (walletInfo && walletInfo.address) {
@@ -1647,112 +1639,42 @@
                 }
             }
 
-            function disconnectWallet() {
-                tonWallet = null;
-                localStorage.removeItem('tonWallet');
-                updateWalletUI(null);
-                if (walletBridgeWs) {
-                    walletBridgeWs.close();
-                    walletBridgeWs = null;
-                }
-                if (walletPendingTimeout) {
-                    clearTimeout(walletPendingTimeout);
-                    walletPendingTimeout = null;
-                }
-            }
-
-            function connectWalletViaTonkeeper() {
-                const clientId = generateId();
-                walletClientId = clientId;
-
-                const bridgeUrl = TON_BRIDGE;
-                const ws = new WebSocket(bridgeUrl + '?client_id=' + clientId + '&auto_reconnect=true');
-                walletBridgeWs = ws;
-
-                const requestId = generateId();
-                const requestPayload = {
-                    address: null,
-                    method: 'connect',
-                    id: requestId,
-                    params: [{
+            function initTonConnect() {
+                try {
+                    if (typeof TON_CONNECT_UI === 'undefined') return;
+                    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                         manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-                        items: [
-                            { name: 'ton_addr', address: null }
-                        ]
-                    }]
-                };
-
-                ws.onopen = () => {
-                    const connectUrl = TONKEEPER_CONNECT +
-                        '?r=' + encodeURIComponent(JSON.stringify(requestPayload)) +
-                        '&client_id=' + clientId +
-                        '&redirect_url=' + encodeURIComponent(window.location.href);
-                    window.open(connectUrl, '_blank');
-
-                    walletPendingTimeout = setTimeout(() => {
-                        if (!tonWallet) {
-                            disconnectWallet();
-                            showNotif('Connection timed out. Please try again.');
-                        }
-                    }, 60000);
-                };
-
-                ws.onmessage = (event) => {
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data && data.event === 'connect') {
-                            const walletData = data.payload;
-                            if (walletData && walletData.address) {
-                                tonWallet = {
-                                    address: walletData.address,
-                                    chain: walletData.device?.chain || '-239',
-                                    connectedAt: Date.now(),
-                                };
-                                localStorage.setItem('tonWallet', JSON.stringify(tonWallet));
-                                updateWalletUI(tonWallet);
-                                showNotif('Wallet connected successfully!');
-                                if (walletPendingTimeout) {
-                                    clearTimeout(walletPendingTimeout);
-                                    walletPendingTimeout = null;
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        // ignore parse errors on non-JSON messages
+                    });
+                    if (tonConnectUI.wallet) {
+                        const a = tonConnectUI.wallet.account;
+                        tonWallet = { address: a.address, chain: a.chain || '-239', connectedAt: Date.now() };
+                        updateWalletUI(tonWallet);
                     }
-                };
-
-                ws.onerror = () => {
-                    showNotif('Could not reach wallet bridge. Try again.');
-                };
-
-                ws.onclose = () => {
-                    walletBridgeWs = null;
-                };
+                    tonConnectUI.onStatusChange((w) => {
+                        if (w && w.account && w.account.address) {
+                            const a = w.account;
+                            tonWallet = { address: a.address, chain: a.chain || '-239', connectedAt: Date.now() };
+                            updateWalletUI(tonWallet);
+                        } else {
+                            tonWallet = null;
+                            updateWalletUI(null);
+                        }
+                    });
+                } catch (e) {
+                    console.error('TonConnect init error:', e);
+                }
             }
 
             walletBtn.addEventListener('click', () => {
+                if (!tonConnectUI) return;
                 if (tonWallet) {
-                    disconnectWallet();
+                    tonConnectUI.disconnect();
                 } else {
-                    connectWalletViaTonkeeper();
+                    tonConnectUI.openModal();
                 }
             });
 
-            function initTonWallet() {
-                const saved = localStorage.getItem('tonWallet');
-                if (saved) {
-                    try {
-                        const parsed = JSON.parse(saved);
-                        if (parsed && parsed.address) {
-                            tonWallet = parsed;
-                            updateWalletUI(tonWallet);
-                        }
-                    } catch (e) {}
-                }
-            }
-
-            initTonWallet();
+            initTonConnect();
             initAuth();
         </script>
         <script>

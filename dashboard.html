@@ -246,8 +246,7 @@
                         <button class="achClaimBtn" id="claimBtn-ne2830" style="display:none">Claim</button>
                     </div>
                 </div>
-                <div class="achievement" data-ach-id="ensign">
-                    <div class="achSpriteWrap"></div>
+                <div class="achievement noSprite" data-ach-id="ensign">
                     <div class="achInfo">
                         <span class="achName">Ensign</span>
                         <span class="achTask">Rank up to Ensign</span>
@@ -258,8 +257,7 @@
                         <button class="achClaimBtn" id="claimBtn-ensign" style="display:none">Claim</button>
                     </div>
                 </div>
-                <div class="achievement" data-ach-id="lieutenant">
-                    <div class="achSpriteWrap"></div>
+                <div class="achievement noSprite" data-ach-id="lieutenant">
                     <div class="achInfo">
                         <span class="achName">Lieutenant</span>
                         <span class="achTask">Rank up to Lieutenant</span>
@@ -270,8 +268,7 @@
                         <button class="achClaimBtn" id="claimBtn-lieutenant" style="display:none">Claim</button>
                     </div>
                 </div>
-                <div class="achievement" data-ach-id="commander">
-                    <div class="achSpriteWrap"></div>
+                <div class="achievement noSprite" data-ach-id="commander">
                     <div class="achInfo">
                         <span class="achName">Commander</span>
                         <span class="achTask">Rank up to Commander</span>
@@ -663,6 +660,10 @@
                 padding: 16px;
                 margin-bottom: 10px;
                 min-height: 72px;
+            }
+            .achievement.noSprite {
+                padding-left: 10px;
+                gap: 8px;
             }
             .achSpriteWrap {
                 width: 48px;

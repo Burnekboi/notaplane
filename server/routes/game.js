@@ -13,8 +13,6 @@ const RANK_THRESHOLDS = [
   { rank: 'Commander', kills: 100000, reward: 50000 },
 ];
 
-const RANK_ORDER = ['Cadet', 'Ensign', 'Lieutenant', 'Commander'];
-
 function computeRank(totalKills) {
   let rank = 'Cadet';
   for (const r of RANK_THRESHOLDS) {
@@ -110,39 +108,12 @@ router.post('/kills', async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const prevRank = user.rank;
-
     if (total > 0) user.total_kills = (user.total_kills || 0) + total;
     if (harbinger > 0) user.harbinger_kills = (user.harbinger_kills || 0) + harbinger;
     if (spacedraco > 0) user.spacedraco_kills = (user.spacedraco_kills || 0) + spacedraco;
     if (ne2830 > 0) user.ne2830_kills = (user.ne2830_kills || 0) + ne2830;
 
     user.rank = computeRank(user.total_kills);
-
-    const rankChanged = user.rank !== prevRank;
-    let rankReward = 0;
-
-    if (rankChanged) {
-      for (const r of RANK_THRESHOLDS) {
-        if (user.total_kills >= r.kills) {
-          const alreadyHadRank = RANK_ORDER.indexOf(prevRank) >= RANK_ORDER.indexOf(r.rank);
-          if (!alreadyHadRank) {
-            const balanceBefore = user.sk_balance;
-            user.sk_balance += r.reward;
-            rankReward += r.reward;
-            await Transaction.create({
-              user_id: user._id,
-              type: 'win',
-              token: 'SK',
-              amount: r.reward,
-              balance_before: balanceBefore,
-              balance_after: user.sk_balance,
-              reference: 'rank_up_' + r.rank.toLowerCase(),
-            });
-          }
-        }
-      }
-    }
 
     await user.save();
 
@@ -152,8 +123,6 @@ router.post('/kills', async (req, res) => {
       spacedraco_kills: user.spacedraco_kills,
       ne2830_kills: user.ne2830_kills,
       rank: user.rank,
-      rank_changed: rankChanged,
-      rank_reward: rankReward,
       sk_balance: user.sk_balance,
       achievements: getAchievementStatus(user),
     });

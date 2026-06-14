@@ -10447,8 +10447,9 @@ async function flushUnsyncedDeltas() {
 
     yesBtn.addEventListener('click', function() {
         hideExitConfirmation();
-        savePendingDeltas();
         Promise.all([syncBalanceNow(), syncKills()]).finally(() => {
+            // Save any remaining unsynced deltas (if sync failed, they'll be flushed next game load)
+            savePendingDeltas();
             const tokenVal = authToken || localStorage.getItem('token') || '';
             window.location.href = 'dashboard.html?token=' + encodeURIComponent(tokenVal);
         });

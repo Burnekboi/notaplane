@@ -3,6 +3,7 @@
     <head>
         <title>Space King Jackpot</title>
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.umd.min.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -180,6 +181,13 @@
                         <div class="lbl">$NIRKA</div>
                     </div>
                 </div>
+            </div>
+            <div id="walletSection">
+                <div id="walletInfo" style="display:none">
+                    <span id="walletAddress"></span>
+                    <button id="walletDisconnectBtn">Disconnect</button>
+                </div>
+                <div id="ton-connect-button"></div>
             </div>
             <div id="buttons">
                 <a class="btn" href="index.html?fromDashboard=1" id="playBtn">PLAY</a>
@@ -521,6 +529,48 @@
                 cursor: pointer;
                 padding: 0;
                 line-height: 1;
+            }
+            #walletSection {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                pointer-events: auto;
+                min-height: 36px;
+                justify-content: center;
+            }
+            #walletInfo {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(0,150,255,0.1);
+                border: 1px solid rgba(0,150,255,0.3);
+                border-radius: 6px;
+                padding: 6px 14px;
+            }
+            #walletAddress {
+                font-size: 12px;
+                font-family: monospace;
+                color: #66bfff;
+                letter-spacing: 1px;
+            }
+            #walletDisconnectBtn {
+                background: none;
+                border: 1px solid rgba(255,100,100,0.3);
+                color: #ff6666;
+                font-size: 10px;
+                font-family: Arial, sans-serif;
+                padding: 2px 8px;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            #walletDisconnectBtn:hover {
+                background: rgba(255,100,100,0.1);
+            }
+            #ton-connect-button {
+                pointer-events: auto;
+                display: flex;
+                justify-content: center;
             }
             #trademark {
                 color: rgba(255,216,102,0.35);
@@ -1574,11 +1624,59 @@
                 }
             });
 
-            initAuth();
+            // ── TON Wallet ─────────────────────────────────────────────────────
+            let tonWallet = null;
+            let tonConnectUI = null;
 
-            document.getElementById('playBtn').addEventListener('click', function () {
-                sessionStorage.setItem('_playTs', Date.now());
+            function updateWalletUI(walletInfo) {
+                const infoEl = document.getElementById('walletInfo');
+                const addrEl = document.getElementById('walletAddress');
+                if (walletInfo) {
+                    const addr = walletInfo.account.address;
+                    const friendly = addr.slice(0, 4) + '...' + addr.slice(-4);
+                    addrEl.textContent = friendly;
+                    infoEl.style.display = 'flex';
+                } else {
+                    infoEl.style.display = 'none';
+                }
+            }
+
+            document.getElementById('walletDisconnectBtn').addEventListener('click', () => {
+                if (tonConnectUI) {
+                    tonConnectUI.disconnect();
+                }
             });
+
+            function initTonConnect() {
+                if (typeof TON_CONNECT_UI === 'undefined') return;
+                try {
+                    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                        manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+                    });
+                    tonConnectUI.onStatusChange((wallet) => {
+                        tonWallet = wallet;
+                        updateWalletUI(wallet);
+                        localStorage.setItem('tonWallet', wallet ? JSON.stringify({
+                            address: wallet.account.address,
+                            chain: wallet.account.chain,
+                        }) : '');
+                    });
+                    const saved = localStorage.getItem('tonWallet');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed && parsed.address) {
+                                updateWalletUI({ account: { address: parsed.address, chain: parsed.chain } });
+                            }
+                        } catch (e) {}
+                    }
+                } catch (e) {
+                    console.warn('TON Connect init failed:', e);
+                }
+            }
+
+            initTonConnect();
+            initAuth();
         </script>
         <script>
             const ACH_FRAMES = {

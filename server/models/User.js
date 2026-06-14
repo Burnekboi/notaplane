@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
   referral_verified: { type: Boolean, default: false },
   referrals: { type: [referralEntrySchema], default: [] },
   tg_channel_claimed: { type: Boolean, default: false },
+  tg_community_claimed: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

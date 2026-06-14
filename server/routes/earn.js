@@ -12,6 +12,9 @@ const REFERRAL_REWARD = 1000;
 const MAX_REFERRALS = 10;
 const TG_CHANNEL_REWARD = 1000;
 const CHANNEL_USERNAME = '@nirkagames';
+const TG_COMMUNITY_REWARD = 1000;
+const COMMUNITY_USERNAME = '@NIRKACom';
+const COMMUNITY_LINK = 'https://t.me/NIRKACom';
 
 function getUTCMidnight() {
   const now = new Date();
@@ -159,6 +162,70 @@ router.get('/tg-channel/status', async (req, res) => {
       claimed: user.tg_channel_claimed || false,
       reward: TG_CHANNEL_REWARD,
       channel: CHANNEL_USERNAME,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/community', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.tg_community_claimed) {
+      return res.status(400).json({ error: 'Already claimed' });
+    }
+
+    const bot = req.app.locals.bot;
+    if (!bot) return res.status(503).json({ error: 'Verification unavailable' });
+
+    try {
+      const member = await bot.telegram.getChatMember(COMMUNITY_USERNAME, user.telegram_id);
+      const status = member.status;
+      if (status === 'left' || status === 'kicked') {
+        return res.status(400).json({ error: 'You must join the community first' });
+      }
+    } catch (err) {
+      console.error('TG community check failed:', err.message);
+      return res.status(503).json({ error: 'Could not verify membership' });
+    }
+
+    const balanceBefore = user.sk_balance;
+    user.sk_balance += TG_COMMUNITY_REWARD;
+    user.tg_community_claimed = true;
+
+    await Transaction.create({
+      user_id: user._id,
+      type: 'earn',
+      token: 'SK',
+      amount: TG_COMMUNITY_REWARD,
+      balance_before: balanceBefore,
+      balance_after: user.sk_balance,
+      reference: 'tg_community',
+    });
+
+    await user.save();
+
+    res.json({
+      sk_balance: user.sk_balance,
+      reward: TG_COMMUNITY_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/community/status', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({
+      claimed: user.tg_community_claimed || false,
+      reward: TG_COMMUNITY_REWARD,
+      channel: COMMUNITY_USERNAME,
+      link: COMMUNITY_LINK,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

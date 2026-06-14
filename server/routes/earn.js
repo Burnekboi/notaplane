@@ -113,21 +113,6 @@ router.post('/tg-channel', async (req, res) => {
       return res.status(400).json({ error: 'Already claimed' });
     }
 
-    // Verify channel membership via bot
-    const bot = req.app.locals.bot;
-    if (!bot) return res.status(503).json({ error: 'Verification unavailable' });
-
-    try {
-      const member = await bot.telegram.getChatMember(CHANNEL_USERNAME, user.telegram_id);
-      const status = member.status;
-      if (status === 'left' || status === 'kicked') {
-        return res.status(400).json({ error: 'You must join @nirkagames first' });
-      }
-    } catch (err) {
-      console.error('TG channel check failed:', err.message);
-      return res.status(503).json({ error: 'Could not verify membership' });
-    }
-
     const balanceBefore = user.sk_balance;
     user.sk_balance += TG_CHANNEL_REWARD;
     user.tg_channel_claimed = true;
@@ -175,20 +160,6 @@ router.post('/community', async (req, res) => {
 
     if (user.tg_community_claimed) {
       return res.status(400).json({ error: 'Already claimed' });
-    }
-
-    const bot = req.app.locals.bot;
-    if (!bot) return res.status(503).json({ error: 'Verification unavailable' });
-
-    try {
-      const member = await bot.telegram.getChatMember(COMMUNITY_USERNAME, user.telegram_id);
-      const status = member.status;
-      if (status === 'left' || status === 'kicked') {
-        return res.status(400).json({ error: 'You must join the community first' });
-      }
-    } catch (err) {
-      console.error('TG community check failed:', err.message);
-      return res.status(503).json({ error: 'Could not verify membership' });
     }
 
     const balanceBefore = user.sk_balance;

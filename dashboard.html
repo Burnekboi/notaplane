@@ -1052,8 +1052,6 @@
                 }
             });
 
-            let tgLinkOpened = false;
-
             async function checkTgChannelStatus() {
                 const token = localStorage.getItem('token');
                 if (!token) return;
@@ -1112,12 +1110,7 @@
                     }
                 } catch (e) {}
 
-                if (!tgLinkOpened) {
-                    tgLinkOpened = true;
-                    window.open('https://t.me/nirkagames', '_blank');
-                    showNotif('Join @nirkagames on Telegram, then click Claim again to verify and receive your reward!');
-                    return;
-                }
+                window.open('https://t.me/nirkagames', '_blank');
 
                 try {
                     const res = await fetch(API_BASE + '/api/earn/tg-channel', {
@@ -1129,21 +1122,18 @@
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        tgLinkOpened = false;
                         document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
                         document.getElementById('tgStatus').textContent = 'Claimed';
                         document.getElementById('tgStatus').style.color = 'rgba(255,216,102,0.4)';
                         document.getElementById('tgDesc').textContent = 'Reward claimed';
                         showNotif('You claimed +1,000 SK!');
                     } else {
-                        showNotif(data.error || 'Join @nirkagames first, then click Claim again');
+                        showNotif(data.error || 'Join @nirkagames first, then try again');
                     }
                 } catch (e) {
-                    showNotif('Join @nirkagames first, then click Claim again');
+                    showNotif('Join @nirkagames first, then try again');
                 }
             });
-
-            let communityLinkOpened = false;
 
             document.getElementById('earnCommunity').addEventListener('click', async () => {
                 const token = localStorage.getItem('token');
@@ -1159,12 +1149,7 @@
                     }
                 } catch (e) {}
 
-                if (!communityLinkOpened) {
-                    communityLinkOpened = true;
-                    window.open('https://t.me/NIRKACom', '_blank');
-                    showNotif('Join @NIRKACom on Telegram, then click Claim again to verify and receive your reward!');
-                    return;
-                }
+                window.open('https://t.me/NIRKACom', '_blank');
 
                 try {
                     const res = await fetch(API_BASE + '/api/earn/community', {
@@ -1176,17 +1161,16 @@
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        communityLinkOpened = false;
                         document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
                         document.getElementById('communityStatus').textContent = 'Claimed';
                         document.getElementById('communityStatus').style.color = 'rgba(255,216,102,0.4)';
                         document.getElementById('communityDesc').textContent = 'Reward claimed';
                         showNotif('You claimed +1,000 SK!');
                     } else {
-                        showNotif(data.error || 'Join @NIRKACom first, then click Claim again');
+                        showNotif(data.error || 'Join @NIRKACom first, then try again');
                     }
                 } catch (e) {
-                    showNotif('Join @NIRKACom first, then click Claim again');
+                    showNotif('Join @NIRKACom first, then try again');
                 }
             });
 

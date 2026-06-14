@@ -177,7 +177,7 @@
                     </div>
                     <div class="token">
                         <div class="val">0</div>
-                        <div class="lbl">NIRKA</div>
+                        <div class="lbl">$NIRKA</div>
                     </div>
                 </div>
             </div>
@@ -253,7 +253,8 @@
                         <span class="achTask">Rank up to Ensign</span>
                     </div>
                     <div class="achRight">
-                        <div class="achReward">5,000 SK + 5 NIRKA</div>
+                        <div class="achReward">5,000 SK Tokens</div>
+                        <div class="achReward nirkaReward">5 $NIRKA</div>
                         <button class="achClaimBtn" id="claimBtn-ensign" style="display:none">Claim</button>
                     </div>
                 </div>
@@ -264,7 +265,8 @@
                         <span class="achTask">Rank up to Lieutenant</span>
                     </div>
                     <div class="achRight">
-                        <div class="achReward">15,000 SK + 10 NIRKA</div>
+                        <div class="achReward">15,000 SK Tokens</div>
+                        <div class="achReward nirkaReward">10 $NIRKA</div>
                         <button class="achClaimBtn" id="claimBtn-lieutenant" style="display:none">Claim</button>
                     </div>
                 </div>
@@ -275,7 +277,8 @@
                         <span class="achTask">Rank up to Commander</span>
                     </div>
                     <div class="achRight">
-                        <div class="achReward">50,000 SK + 25 NIRKA</div>
+                        <div class="achReward">50,000 SK Tokens</div>
+                        <div class="achReward nirkaReward">25 $NIRKA</div>
                         <button class="achClaimBtn" id="claimBtn-commander" style="display:none">Claim</button>
                     </div>
                 </div>
@@ -286,7 +289,7 @@
                 <h2 id="rankupTitle">CONGRATULATIONS!</h2>
                 <p id="rankupMsg">You've been promoted to <strong id="rankupRankName">Ensign</strong>!</p>
                 <p id="rankupReward">+<span id="rankupRewardAmt">5,000</span> SK Tokens</p>
-                <p id="rankupNirkaRewardP">+<span id="rankupNirkaReward">5</span> NIRKA</p>
+                <p id="rankupNirkaRewardP">+<span id="rankupNirkaReward">5</span> $NIRKA</p>
                 <button id="rankupClose" type="button">AWESOME!</button>
             </div>
         </div>
@@ -702,6 +705,10 @@
                 text-align: right;
                 white-space: nowrap;
                 letter-spacing: 1px;
+            }
+            .achReward.nirkaReward {
+                font-size: 12px;
+                color: #5dff5d;
             }
             .achClaimBtn {
                 padding: 4px 14px;

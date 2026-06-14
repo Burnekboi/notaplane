@@ -612,7 +612,7 @@
             <div id="exitOverlay">
                 <div id="exitModal">
                     <h2>EXIT GAME?</h2>
-                    <p>Your progress will be saved.</p>
+                    <p>All progress saved!</p>
                     <div class="exit-buttons">
                         <button class="exit-btn exit-btn-yes" id="exitConfirmYes">YES</button>
                         <button class="exit-btn exit-btn-no" id="exitConfirmNo">NO</button>
@@ -10483,10 +10483,15 @@ function flushUnsyncedDeltas() {
 })();
 
 // ── Sync on page unload (refresh/close) ──
-window.addEventListener('beforeunload', () => {
+// Data is saved via savePendingDeltas() on visibilitychange (mobile app switch,
+// screen off, browser close). Unsynced deltas are flushed to the server on next
+// page load via flushUnsyncedDeltas().
+
+// ── Save deltas when page becomes hidden (close / app switch / screen off) ──
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return;
     if (syncInterval) clearInterval(syncInterval);
     if (!authToken) return;
-
     const pendingBets = sessionTotalBets - lastSyncedBets;
     const pendingWins = sessionTotalWins - lastSyncedWins;
     const net = pendingWins - pendingBets;
@@ -10494,10 +10499,7 @@ window.addEventListener('beforeunload', () => {
         try { localStorage.removeItem('pendingSyncNet'); } catch (e) {}
         return;
     }
-
-    // Save to localStorage as backup in case sendBeacon / beforeunload fails
     try { localStorage.setItem('pendingSyncNet', net.toString()); } catch (e) {}
-
     const endpoint = net > 0 ? '/api/game/win' : '/api/game/bet';
     const amount = net > 0 ? net : -net;
     try {
@@ -10506,13 +10508,6 @@ window.addEventListener('beforeunload', () => {
             new Blob([JSON.stringify({ amount })], { type: 'application/json' })
         );
     } catch (e) {}
-});
-
-// ── Also save deltas when page becomes hidden (mobile app switch / screen off) ──
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-        savePendingDeltas();
-    }
 });
 
 // Initial checks

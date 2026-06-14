@@ -1130,48 +1130,23 @@
                 // Returns { hit: bool, critical: bool, instant: bool }
 
                 rollHit(tierIndex, isBoss) {
-                    const drift = this._drift();
-
-                    // Instant-kill: mercy mechanic when RTP is badly below target
-
-                    // When RTP < 30%, player gets 30% instant kill chance regardless of tier
-
                     const instantBase = [
                         0.008, 0.006, 0.004, 0.002, 0.001, 0.0005, 0.0001,
                         0.003, 0.002, 0.008, 0.006, 0.0001, 0.004, 0.002,
                         0.001, 0.00005,
                     ];
 
-                    let instantChance =
-                        drift > 0.3
-                            ? 0.3 // 30% instant kill when RTP < 30%
-                            : drift > 0.15
-                              ? instantBase[tierIndex] * 2
-                              : instantBase[tierIndex];
-
-                    // Boss fights only (tier 11 is always T6B; tier 6 is shared with T6 fish — pass isBoss)
+                    let instantChance = instantBase[tierIndex];
 
                     const isBossTier =
                         tierIndex === 11 || (!!isBoss && tierIndex === 6);
-
-                    if (isBossTier) {
-                        if (drift > 0.3) instantChance = 0.11;
-                        else if (drift > 0.15) instantChance *= 0.55;
-                    }
-
-                    // Critical (2× damage): helps chip down multi-HP enemies faster
 
                     const critBase = [
                         0.05, 0.05, 0.06, 0.07, 0.08, 0.09, 0.09, 0.07, 0.07,
                         0.05, 0.05, 0.072, 0.06, 0.06, 0.06, 0.06,
                     ];
 
-                    let critChance =
-                        drift > 0.2
-                            ? critBase[tierIndex] * 2.5
-                            : drift > 0.1
-                              ? critBase[tierIndex] * 1.5
-                              : critBase[tierIndex];
+                    let critChance = critBase[tierIndex];
 
                     if (isBossTier) critChance *= 0.72;
 
@@ -2009,21 +1984,17 @@
             }
 
             function rollNukeDmg() {
-                // RTP < 30% mercy: +25% instant kill, +25% crit
-                const rtpBelow30 = rtp.totalSpent > 0 && rtp.currentRTP() < 0.3;
-                const rtpBonus = rtpBelow30 ? 0.25 : 0;
-
                 const r = rng.next();
 
-                // 1.5% base instant kill + RTP bonus + crit window bonus
+                // 1.5% base instant kill + crit window bonus
                 const instantKillChance =
-                    0.015 + rtpBonus + (critState.isActive() ? 0.01 : 0);
+                    0.015 + (critState.isActive() ? 0.01 : 0);
 
                 if (r < instantKillChance) return { dmg: 99999, instant: true };
 
-                // 5% base crit + RTP bonus + 15% crit window bonus
+                // 5% base crit + 15% crit window bonus
                 const baseCritChance =
-                    0.05 + rtpBonus + (critState.isActive() ? 0.15 : 0);
+                    0.05 + (critState.isActive() ? 0.15 : 0);
 
                 if (r < instantKillChance + baseCritChance) {
                     return { dmg: 6.5, instant: false, isCrit: true };
@@ -2116,14 +2087,8 @@
                     spawnDragonSparks(e.x, e.y);
                     processBossHit(e, ts, true);
 
-                    // RTP < 30% mercy: +25% instant kill, +25% forced crit chance
-                    const _drgRtpBelow30 =
-                        rtp.totalSpent > 0 && rtp.currentRTP() < 0.3;
-                    const _drgRtpBonus = _drgRtpBelow30 ? 0.25 : 0;
-
                     const dragonInstantChance =
                         (e.isBoss ? 0.009 : 0.02) +
-                        _drgRtpBonus +
                         (critState.isActive() ? 0.01 : 0);
 
                     const dragonInstant = rng.next() < dragonInstantChance;
@@ -2152,10 +2117,6 @@
                     if (e.isBoss) baseDmg = Math.round(baseDmg * 0.88);
 
                     let critRoll = critState.roll();
-                    // RTP < 30%: 25% chance to force a minimum crit if critState didn't already fire
-                    if (critRoll === 1 && _drgRtpBelow30 && rng.next() < 0.25) {
-                        critRoll = 35 + Math.floor(rng.next() * 6);
-                    }
                     let dmg = dragonInstant
                         ? e.hp
                         : baseDmg + (critRoll > 1 ? critRoll : 0);
@@ -6219,26 +6180,17 @@
                                         !!autoTarget.isBoss,
                                     );
 
-                                    // Auto-aim: 0.5% base instant-kill, 2% base crit, 2.7 base damage
-                                    // RTP < 30% mercy: +25% instant kill, +25% crit
-                                    const _autoRtpBelow30 =
-                                        rtp.totalSpent > 0 &&
-                                        rtp.currentRTP() < 0.3;
-                                    const _autoRtpBonus = _autoRtpBelow30
-                                        ? 0.25
-                                        : 0;
+                                    // Auto-aim: 0.005% base instant-kill, 2% base crit, 2.7 base damage
 
                                     const autoInstant =
                                         rng.next() <
-                                        0.005 +
-                                            _autoRtpBonus +
+                                        0.00005 +
                                             (critState.isActive() ? 0.01 : 0);
 
                                     const autoCrit =
                                         !autoInstant &&
                                         rng.next() <
                                             0.02 +
-                                                _autoRtpBonus +
                                                 (critState.isActive()
                                                     ? 0.15
                                                     : 0);
@@ -6750,23 +6702,17 @@
 
                             const roll = rtp.rollHit(e.tierIndex, !!e.isBoss);
 
-                            // Manual bullet: 0.5% base instant-kill, 2.5% base crit, 2.5 base damage
-                            // RTP < 30% mercy: +25% instant kill, +25% crit
-                            const _bltRtpBelow30 =
-                                rtp.totalSpent > 0 && rtp.currentRTP() < 0.3;
-                            const _bltRtpBonus = _bltRtpBelow30 ? 0.25 : 0;
+                            // Manual bullet: 0.005% base instant-kill, 2.5% base crit, 2.5 base damage
 
                             const bulletInstant =
                                 rng.next() <
-                                0.005 +
-                                    _bltRtpBonus +
+                                0.00005 +
                                     (critState.isActive() ? 0.01 : 0);
 
                             const bulletCrit =
                                 !bulletInstant &&
                                 rng.next() <
                                     0.025 +
-                                        _bltRtpBonus +
                                         (critState.isActive() ? 0.15 : 0);
 
                             if (roll.hit || roll.instant || bulletInstant) {

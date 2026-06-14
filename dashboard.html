@@ -3,7 +3,6 @@
     <head>
         <title>Space King Jackpot</title>
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
-        <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.umd.min.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -190,7 +189,6 @@
                     <span id="walletDot"></span>
                     <span id="walletBtnText">Connect Wallet</span>
                 </button>
-                <div id="ton-connect-button" style="display:none"></div>
             </div>
             <div id="buttons">
                 <a class="btn" href="index.html?fromDashboard=1" id="playBtn">PLAY</a>
@@ -1624,15 +1622,23 @@
 
             // ── TON Wallet ─────────────────────────────────────────────────────
             let tonWallet = null;
-            let tonConnectUI = null;
+            let walletBridgeWs = null;
+            let walletClientId = null;
+            let walletPendingTimeout = null;
             const walletBtn = document.getElementById('walletBtn');
             const walletDot = document.getElementById('walletDot');
             const walletBtnText = document.getElementById('walletBtnText');
-            const tcButtonContainer = document.getElementById('ton-connect-button');
+
+            const TON_BRIDGE = 'wss://bridge.tonapi.io/bridge/events';
+            const TONKEEPER_CONNECT = 'https://app.tonkeeper.com/ton-connect/v2/connect';
+
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+            }
 
             function updateWalletUI(walletInfo) {
-                if (walletInfo) {
-                    const addr = walletInfo.account.address;
+                if (walletInfo && walletInfo.address) {
+                    const addr = walletInfo.address;
                     walletBtnText.textContent = addr.slice(0, 4) + '...' + addr.slice(-4);
                     walletDot.className = 'connected';
                 } else {
@@ -1641,63 +1647,112 @@
                 }
             }
 
-            walletBtn.addEventListener('click', () => {
-                if (tonWallet) {
-                    if (tonConnectUI) tonConnectUI.disconnect();
-                } else {
-                    if (tonConnectUI) {
-                        tonConnectUI.openModal();
-                    } else {
-                        window.open('https://t.me/wallet/start', '_blank');
-                    }
+            function disconnectWallet() {
+                tonWallet = null;
+                localStorage.removeItem('tonWallet');
+                updateWalletUI(null);
+                if (walletBridgeWs) {
+                    walletBridgeWs.close();
+                    walletBridgeWs = null;
                 }
-            });
-
-            function initTonConnect() {
-                if (typeof TON_CONNECT_UI === 'undefined') {
-                    const saved = localStorage.getItem('tonWallet');
-                    if (saved) {
-                        try {
-                            const parsed = JSON.parse(saved);
-                            if (parsed && parsed.address) {
-                                tonWallet = { account: { address: parsed.address, chain: parsed.chain } };
-                                updateWalletUI(tonWallet);
-                            }
-                        } catch (e) {}
-                    }
-                    return;
-                }
-                try {
-                    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-                        manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-                    });
-                    tonConnectUI.onStatusChange((wallet) => {
-                        tonWallet = wallet;
-                        updateWalletUI(wallet);
-                        if (wallet) {
-                            localStorage.setItem('tonWallet', JSON.stringify({
-                                address: wallet.account.address,
-                                chain: wallet.account.chain,
-                            }));
-                        } else {
-                            localStorage.removeItem('tonWallet');
-                        }
-                    });
-                    const saved = localStorage.getItem('tonWallet');
-                    if (saved) {
-                        try {
-                            const parsed = JSON.parse(saved);
-                            if (parsed && parsed.address) {
-                                updateWalletUI({ account: { address: parsed.address, chain: parsed.chain } });
-                            }
-                        } catch (e) {}
-                    }
-                } catch (e) {
-                    console.warn('TON Connect init failed:', e);
+                if (walletPendingTimeout) {
+                    clearTimeout(walletPendingTimeout);
+                    walletPendingTimeout = null;
                 }
             }
 
-            initTonConnect();
+            function connectWalletViaTonkeeper() {
+                const clientId = generateId();
+                walletClientId = clientId;
+
+                const bridgeUrl = TON_BRIDGE;
+                const ws = new WebSocket(bridgeUrl + '?client_id=' + clientId + '&auto_reconnect=true');
+                walletBridgeWs = ws;
+
+                const requestId = generateId();
+                const requestPayload = {
+                    address: null,
+                    method: 'connect',
+                    id: requestId,
+                    params: [{
+                        manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+                        items: [
+                            { name: 'ton_addr', address: null }
+                        ]
+                    }]
+                };
+
+                ws.onopen = () => {
+                    const connectUrl = TONKEEPER_CONNECT +
+                        '?r=' + encodeURIComponent(JSON.stringify(requestPayload)) +
+                        '&client_id=' + clientId +
+                        '&redirect_url=' + encodeURIComponent(window.location.href);
+                    window.open(connectUrl, '_blank');
+
+                    walletPendingTimeout = setTimeout(() => {
+                        if (!tonWallet) {
+                            disconnectWallet();
+                            showNotif('Connection timed out. Please try again.');
+                        }
+                    }, 60000);
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data && data.event === 'connect') {
+                            const walletData = data.payload;
+                            if (walletData && walletData.address) {
+                                tonWallet = {
+                                    address: walletData.address,
+                                    chain: walletData.device?.chain || '-239',
+                                    connectedAt: Date.now(),
+                                };
+                                localStorage.setItem('tonWallet', JSON.stringify(tonWallet));
+                                updateWalletUI(tonWallet);
+                                showNotif('Wallet connected successfully!');
+                                if (walletPendingTimeout) {
+                                    clearTimeout(walletPendingTimeout);
+                                    walletPendingTimeout = null;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // ignore parse errors on non-JSON messages
+                    }
+                };
+
+                ws.onerror = () => {
+                    showNotif('Could not reach wallet bridge. Try again.');
+                };
+
+                ws.onclose = () => {
+                    walletBridgeWs = null;
+                };
+            }
+
+            walletBtn.addEventListener('click', () => {
+                if (tonWallet) {
+                    disconnectWallet();
+                } else {
+                    connectWalletViaTonkeeper();
+                }
+            });
+
+            function initTonWallet() {
+                const saved = localStorage.getItem('tonWallet');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && parsed.address) {
+                            tonWallet = parsed;
+                            updateWalletUI(tonWallet);
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            initTonWallet();
             initAuth();
         </script>
         <script>

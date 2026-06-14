@@ -10,18 +10,19 @@
                 background: #000;
                 display: flex;
                 justify-content: center;
-                align-items: center;
-                height: 100vh;
-                overflow: hidden;
+                align-items: flex-start;
+                min-height: 100vh;
+                overflow-y: auto;
                 font-family: 'Impact', 'Arial Black', sans-serif;
             }
             canvas {
                 display: block;
-                position: absolute;
+                position: fixed;
                 top: 0;
                 left: 0;
                 width: 100%;
                 height: 100%;
+                z-index: 0;
             }
             #ui {
                 position: relative;
@@ -31,6 +32,8 @@
                 align-items: center;
                 gap: 20px;
                 pointer-events: none;
+                padding: 50px 10px 20px;
+                min-height: 100vh;
             }
             #title {
                 width: min(300px, 35vw);
@@ -183,11 +186,11 @@
                 </div>
             </div>
             <div id="walletSection">
-                <div id="walletInfo" style="display:none">
-                    <span id="walletAddress"></span>
-                    <button id="walletDisconnectBtn">Disconnect</button>
-                </div>
-                <div id="ton-connect-button"></div>
+                <button id="walletBtn">
+                    <span id="walletDot"></span>
+                    <span id="walletBtnText">Connect Wallet</span>
+                </button>
+                <div id="ton-connect-button" style="display:none"></div>
             </div>
             <div id="buttons">
                 <a class="btn" href="index.html?fromDashboard=1" id="playBtn">PLAY</a>
@@ -531,46 +534,41 @@
                 line-height: 1;
             }
             #walletSection {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 5;
+                pointer-events: auto;
+            }
+            #walletBtn {
                 display: flex;
-                flex-direction: column;
                 align-items: center;
                 gap: 6px;
-                pointer-events: auto;
-                min-height: 36px;
-                justify-content: center;
-            }
-            #walletInfo {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                background: rgba(0,150,255,0.1);
-                border: 1px solid rgba(0,150,255,0.3);
+                background: rgba(0,0,0,0.6);
+                border: 1px solid rgba(255,200,100,0.2);
                 border-radius: 6px;
-                padding: 6px 14px;
-            }
-            #walletAddress {
-                font-size: 12px;
-                font-family: monospace;
-                color: #66bfff;
-                letter-spacing: 1px;
-            }
-            #walletDisconnectBtn {
-                background: none;
-                border: 1px solid rgba(255,100,100,0.3);
-                color: #ff6666;
-                font-size: 10px;
-                font-family: Arial, sans-serif;
-                padding: 2px 8px;
-                border-radius: 4px;
+                padding: 6px 12px;
                 cursor: pointer;
+                transition: all 0.2s;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+                font-size: 11px;
+                letter-spacing: 1px;
+                color: #ffd866;
             }
-            #walletDisconnectBtn:hover {
-                background: rgba(255,100,100,0.1);
+            #walletBtn:hover {
+                background: rgba(255,200,100,0.1);
+                border-color: rgba(255,200,100,0.4);
             }
-            #ton-connect-button {
-                pointer-events: auto;
-                display: flex;
-                justify-content: center;
+            #walletDot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #ff4444;
+                flex-shrink: 0;
+                transition: background 0.3s;
+            }
+            #walletDot.connected {
+                background: #44ff44;
             }
             #trademark {
                 color: rgba(255,216,102,0.35);
@@ -1627,28 +1625,48 @@
             // ── TON Wallet ─────────────────────────────────────────────────────
             let tonWallet = null;
             let tonConnectUI = null;
+            const walletBtn = document.getElementById('walletBtn');
+            const walletDot = document.getElementById('walletDot');
+            const walletBtnText = document.getElementById('walletBtnText');
+            const tcButtonContainer = document.getElementById('ton-connect-button');
 
             function updateWalletUI(walletInfo) {
-                const infoEl = document.getElementById('walletInfo');
-                const addrEl = document.getElementById('walletAddress');
                 if (walletInfo) {
                     const addr = walletInfo.account.address;
-                    const friendly = addr.slice(0, 4) + '...' + addr.slice(-4);
-                    addrEl.textContent = friendly;
-                    infoEl.style.display = 'flex';
+                    walletBtnText.textContent = addr.slice(0, 4) + '...' + addr.slice(-4);
+                    walletDot.className = 'connected';
                 } else {
-                    infoEl.style.display = 'none';
+                    walletBtnText.textContent = 'Connect Wallet';
+                    walletDot.className = '';
                 }
             }
 
-            document.getElementById('walletDisconnectBtn').addEventListener('click', () => {
-                if (tonConnectUI) {
-                    tonConnectUI.disconnect();
+            walletBtn.addEventListener('click', () => {
+                if (tonWallet) {
+                    if (tonConnectUI) tonConnectUI.disconnect();
+                } else {
+                    if (tonConnectUI) {
+                        tonConnectUI.openModal();
+                    } else {
+                        window.open('https://t.me/wallet/start', '_blank');
+                    }
                 }
             });
 
             function initTonConnect() {
-                if (typeof TON_CONNECT_UI === 'undefined') return;
+                if (typeof TON_CONNECT_UI === 'undefined') {
+                    const saved = localStorage.getItem('tonWallet');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed && parsed.address) {
+                                tonWallet = { account: { address: parsed.address, chain: parsed.chain } };
+                                updateWalletUI(tonWallet);
+                            }
+                        } catch (e) {}
+                    }
+                    return;
+                }
                 try {
                     tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                         manifestUrl: window.location.origin + '/tonconnect-manifest.json',
@@ -1656,10 +1674,14 @@
                     tonConnectUI.onStatusChange((wallet) => {
                         tonWallet = wallet;
                         updateWalletUI(wallet);
-                        localStorage.setItem('tonWallet', wallet ? JSON.stringify({
-                            address: wallet.account.address,
-                            chain: wallet.account.chain,
-                        }) : '');
+                        if (wallet) {
+                            localStorage.setItem('tonWallet', JSON.stringify({
+                                address: wallet.account.address,
+                                chain: wallet.account.chain,
+                            }));
+                        } else {
+                            localStorage.removeItem('tonWallet');
+                        }
                     });
                     const saved = localStorage.getItem('tonWallet');
                     if (saved) {

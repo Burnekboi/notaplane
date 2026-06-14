@@ -10304,14 +10304,14 @@ function startPeriodicSync() {
     syncInterval = setInterval(syncBalanceNow, 30000);
 }
 
-function initBalanceFromServer() {
+async function initBalanceFromServer() {
     // Try stored token first (from dashboard or previous session)
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
         authToken = storedToken;
+        // Flush unsynced deltas first so fetchBalance gets the true server balance
+        await flushUnsyncedDeltas();
         fetchBalance();
-        // Flush any unsynced deltas from a previous session
-        flushUnsyncedDeltas();
         startPeriodicSync();
     }
 
@@ -10336,12 +10336,10 @@ function initBalanceFromServer() {
                 if (data.token) {
                     authToken = data.token;
                     localStorage.setItem('token', data.token);
-                    if (data.user && data.user.sk_balance !== undefined) {
-                        serverBalance = data.user.sk_balance;
-                        balance = data.user.sk_balance;
-                    }
-                    // Flush any unsynced deltas from a previous session
-                    flushUnsyncedDeltas();
+                    // Flush unsynced deltas first, then pull fresh balance
+                    flushUnsyncedDeltas().then(() => {
+                        fetchBalance();
+                    });
                     startPeriodicSync();
                 }
             })
@@ -10411,6 +10409,9 @@ async function syncBalanceNow() {
                 body: JSON.stringify({ amount: net })
             });
             if (res.ok) {
+                const data = await res.json();
+                balance = data.sk_balance;
+                serverBalance = data.sk_balance;
                 lastSyncedBets = sessionTotalBets;
                 lastSyncedWins = sessionTotalWins;
             } else {
@@ -10426,6 +10427,9 @@ async function syncBalanceNow() {
                 body: JSON.stringify({ amount: -net })
             });
             if (res.ok) {
+                const data = await res.json();
+                balance = data.sk_balance;
+                serverBalance = data.sk_balance;
                 lastSyncedBets = sessionTotalBets;
                 lastSyncedWins = sessionTotalWins;
             } else {
@@ -10463,7 +10467,7 @@ function savePendingDeltas() {
     }
 }
 
-function flushUnsyncedDeltas() {
+async function flushUnsyncedDeltas() {
     if (!authToken) return;
     const netStr = localStorage.getItem('pendingSyncNet');
     if (!netStr) return;
@@ -10472,15 +10476,19 @@ function flushUnsyncedDeltas() {
 
     const endpoint = net > 0 ? '/api/game/win' : '/api/game/bet';
     const amount = net > 0 ? net : -net;
-    fetch(API_BASE + endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-        body: JSON.stringify({ amount })
-    })
-    .then(r => {
-        if (r.ok) localStorage.removeItem('pendingSyncNet');
-    })
-    .catch(() => {});
+    try {
+        const r = await fetch(API_BASE + endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify({ amount })
+        });
+        if (r.ok) {
+            const data = await r.json();
+            balance = data.sk_balance;
+            serverBalance = data.sk_balance;
+            localStorage.removeItem('pendingSyncNet');
+        }
+    } catch (e) {}
 }
 
 // ── Exit confirmation YES/NO handlers ──

@@ -163,7 +163,7 @@
                 <img src="dashboard assets/Profile boy.png" alt="Profile">
                 <div id="profileInfo">
                     <span class="name">Christian Jake</span>
-                    <span class="id">ID: SJK-0001</span>
+                    <span class="id">ID: SK-0001</span>
                     <span class="rank">Cadet</span>
                     <div class="rankProgress">
                         <div class="rankBar"><div class="rankBarFill" id="rankBarFill"></div></div>
@@ -173,7 +173,7 @@
                 <div id="profileTokens">
                     <div class="token">
                         <div class="val">1,250</div>
-                        <div class="lbl">SJ Tokens</div>
+                        <div class="lbl">SK Tokens</div>
                     </div>
                     <div class="token">
                         <div class="val">0</div>
@@ -253,7 +253,7 @@
                         <span class="achTask">Rank up to Ensign</span>
                     </div>
                     <div class="achRight">
-                        <div class="achReward">5,000 SK Tokens</div>
+                        <div class="achReward">5,000 SK + 5 NIRKA</div>
                         <button class="achClaimBtn" id="claimBtn-ensign" style="display:none">Claim</button>
                     </div>
                 </div>
@@ -264,7 +264,7 @@
                         <span class="achTask">Rank up to Lieutenant</span>
                     </div>
                     <div class="achRight">
-                        <div class="achReward">15,000 SK Tokens</div>
+                        <div class="achReward">15,000 SK + 10 NIRKA</div>
                         <button class="achClaimBtn" id="claimBtn-lieutenant" style="display:none">Claim</button>
                     </div>
                 </div>
@@ -275,7 +275,7 @@
                         <span class="achTask">Rank up to Commander</span>
                     </div>
                     <div class="achRight">
-                        <div class="achReward">50,000 SK Tokens</div>
+                        <div class="achReward">50,000 SK + 25 NIRKA</div>
                         <button class="achClaimBtn" id="claimBtn-commander" style="display:none">Claim</button>
                     </div>
                 </div>
@@ -286,6 +286,7 @@
                 <h2 id="rankupTitle">CONGRATULATIONS!</h2>
                 <p id="rankupMsg">You've been promoted to <strong id="rankupRankName">Ensign</strong>!</p>
                 <p id="rankupReward">+<span id="rankupRewardAmt">5,000</span> SK Tokens</p>
+                <p id="rankupNirkaRewardP">+<span id="rankupNirkaReward">5</span> NIRKA</p>
                 <button id="rankupClose" type="button">AWESOME!</button>
             </div>
         </div>
@@ -442,7 +443,13 @@
             #rankupReward {
                 font-size: 18px !important;
                 color: #5dff5d !important;
-                margin: 12px 0 20px !important;
+                margin: 12px 0 0 !important;
+            }
+            #rankupNirkaRewardP {
+                font-size: 16px !important;
+                color: #ffaa44 !important;
+                margin: 4px 0 20px !important;
+                font-family: Arial, sans-serif;
             }
             #rankupClose {
                 padding: 10px 30px;
@@ -1305,7 +1312,7 @@
 
             function updateDashboard(user) {
                 document.querySelector('#profileInfo .name').textContent = user.first_name || 'Player';
-                document.querySelector('#profileInfo .id').textContent = 'ID: SKJ-' + String(user.telegram_id).slice(-4).padStart(4, '0');
+                document.querySelector('#profileInfo .id').textContent = 'ID: SK-' + String(user.telegram_id).slice(-4).padStart(4, '0');
                 document.querySelector('#profileTokens .token:first-child .val').textContent = Number(user.sk_balance).toLocaleString();
                 document.querySelector('#profileTokens .token:last-child .val').textContent = Number(user.skj_balance).toLocaleString();
                 updateRankProgress(user.rank, user.total_kills || 0);
@@ -1370,6 +1377,9 @@
                     if (res.ok) {
                         const data = await res.json();
                         document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        if (data.skj_balance !== undefined) {
+                            document.querySelector('#profileTokens .token:last-child .val').textContent = Number(data.skj_balance).toLocaleString();
+                        }
                         btn.textContent = 'Claimed';
                         btn.className = 'achClaimBtn claimed';
                         btn.disabled = false;
@@ -1387,8 +1397,10 @@
 
             function showRankUpPopup(newRank) {
                 const rewards = { 'Ensign': '5,000', 'Lieutenant': '15,000', 'Commander': '50,000' };
+                const nirkaRewards = { 'Ensign': '5', 'Lieutenant': '10', 'Commander': '25' };
                 document.getElementById('rankupRankName').textContent = newRank;
                 document.getElementById('rankupRewardAmt').textContent = rewards[newRank] || '0';
+                document.getElementById('rankupNirkaReward').textContent = nirkaRewards[newRank] || '0';
                 document.getElementById('rankupModal').style.display = 'flex';
             }
 

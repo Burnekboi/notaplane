@@ -281,6 +281,13 @@
                 </div>
             </div>
         </div>
+        <div id="leaderboardModal">
+            <div id="leaderboardContent">
+                <button id="leaderboardClose" type="button">&times;</button>
+                <h2>LEADERBOARD</h2>
+                <div id="leaderboardList"></div>
+            </div>
+        </div>
         <div id="rankupModal" style="display:none">
             <div id="rankupContent">
                 <h2 id="rankupTitle">CONGRATULATIONS!</h2>
@@ -611,7 +618,7 @@
                 font-family: Arial, sans-serif;
                 color: rgba(255,216,102,0.4);
             }
-            #achievementsModal {
+            #leaderboardModal {
                 display: none;
                 position: fixed;
                 z-index: 10;
@@ -622,17 +629,83 @@
                 align-items: center;
                 font-family: 'Impact', 'Arial Black', sans-serif;
             }
-            #achievementsContent {
+            #leaderboardContent {
                 background: #111;
                 border: 2px solid rgba(255,200,100,0.5);
                 border-radius: 10px;
                 padding: 30px 35px;
-                max-width: 500px;
+                max-width: 420px;
                 width: 90%;
                 position: relative;
                 color: #ffd866;
                 box-shadow: 0 0 40px rgba(255,200,80,0.2);
             }
+            #leaderboardContent h2 {
+                text-align: center;
+                font-size: 22px;
+                letter-spacing: 3px;
+                margin-bottom: 20px;
+            }
+            #leaderboardClose {
+                position: absolute;
+                top: 8px; right: 14px;
+                background: none;
+                border: none;
+                color: #ffd866;
+                font-size: 28px;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+            }
+            #leaderboardList {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .lbEntry {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                background: rgba(255,200,100,0.05);
+                border: 1px solid rgba(255,200,100,0.1);
+                border-radius: 6px;
+                padding: 10px 14px;
+            }
+            .lbEntry.lbTop1 {
+                background: rgba(255,215,0,0.1);
+                border-color: rgba(255,215,0,0.3);
+            }
+            .lbEntry.lbTop2 {
+                background: rgba(192,192,192,0.08);
+                border-color: rgba(192,192,192,0.2);
+            }
+            .lbEntry.lbTop3 {
+                background: rgba(205,127,50,0.08);
+                border-color: rgba(205,127,50,0.2);
+            }
+            .lbRank {
+                font-size: 16px;
+                color: rgba(255,216,102,0.6);
+                min-width: 24px;
+                text-align: center;
+                letter-spacing: 1px;
+            }
+            .lbRankGold { color: #ffd700; }
+            .lbRankSilver { color: #c0c0c0; }
+            .lbRankBronze { color: #cd7f32; }
+            .lbId {
+                flex: 1;
+                font-size: 14px;
+                letter-spacing: 1px;
+                color: #ffd866;
+            }
+            .lbPlayerRank {
+                font-size: 12px;
+                font-family: Arial, sans-serif;
+                color: rgba(255,216,102,0.5);
+                letter-spacing: 1px;
+            }
+            #achievementsModal {
             #achievementsContent h2 {
                 text-align: center;
                 font-size: 22px;
@@ -935,8 +1008,47 @@
                 }
             });
 
+            function renderLeaderboard() {
+                const mockPlayers = [
+                    { id: 'SK-1001', kills: 154820, rank: 'Commander' },
+                    { id: 'SK-0942', kills: 128500, rank: 'Commander' },
+                    { id: 'SK-0873', kills: 102300, rank: 'Commander' },
+                    { id: 'SK-0765', kills: 87600, rank: 'Lieutenant' },
+                    { id: 'SK-0651', kills: 65400, rank: 'Lieutenant' },
+                    { id: 'SK-0542', kills: 43200, rank: 'Lieutenant' },
+                    { id: 'SK-0433', kills: 28900, rank: 'Lieutenant' },
+                    { id: 'SK-0320', kills: 15400, rank: 'Lieutenant' },
+                    { id: 'SK-0211', kills: 8200, rank: 'Ensign' },
+                    { id: 'SK-0105', kills: 4500, rank: 'Ensign' },
+                ];
+                const list = document.getElementById('leaderboardList');
+                list.innerHTML = '';
+                mockPlayers.forEach((p, i) => {
+                    const rankNum = i + 1;
+                    const entry = document.createElement('div');
+                    entry.className = 'lbEntry' + (rankNum <= 3 ? ' lbTop' + rankNum : '');
+                    const rankClass = rankNum === 1 ? 'lbRankGold' : rankNum === 2 ? 'lbRankSilver' : rankNum === 3 ? 'lbRankBronze' : '';
+                    entry.innerHTML =
+                        '<span class="lbRank ' + rankClass + '">#' + rankNum + '</span>' +
+                        '<span class="lbId">' + p.id + '</span>' +
+                        '<span class="lbPlayerRank">' + p.rank + '</span>';
+                    list.appendChild(entry);
+                });
+            }
+
             document.getElementById('leaderboardBtn').addEventListener('click', () => {
-                showNotif('Leaderboard — coming soon');
+                renderLeaderboard();
+                document.getElementById('leaderboardModal').style.display = 'flex';
+            });
+
+            document.getElementById('leaderboardClose').addEventListener('click', () => {
+                document.getElementById('leaderboardModal').style.display = 'none';
+            });
+
+            document.getElementById('leaderboardModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    document.getElementById('leaderboardModal').style.display = 'none';
+                }
             });
 
             document.getElementById('achievementsBtn').addEventListener('click', () => {

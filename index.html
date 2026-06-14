@@ -1032,6 +1032,7 @@
             let serverBalance = 0;     // balance fetched from server on game start
             let authToken = null;      // JWT token for API calls
             let syncInterval = null;   // periodic sync interval handle
+            let syncMutex = false;     // prevents concurrent sync calls
 
             let mouseX = W / 2,
                 mouseY = H / 2;
@@ -2033,6 +2034,7 @@
 
             function fireNukeAt(target) {
                 if (playerAttackLocked) return; // Lock attacks during D3 death sequence
+                if (balance < betAmount * NUKE_STRIKE_COST_MULTIPLIER) return;
 
                 const dx = target.x - player.x,
                     dy = target.y - player.y;
@@ -2081,6 +2083,7 @@
 
             function fireDragonStrikeAt(target, ts = performance.now()) {
                 if (playerAttackLocked || !isTargetable(target)) return;
+                if (balance < betAmount * DRAGON_STRIKE_COST_MULTIPLIER) return;
 
                 rtp.spend();
                 balance -= betAmount * DRAGON_STRIKE_COST_MULTIPLIER;
@@ -2769,6 +2772,7 @@
 
             function fireBullet() {
                 if (playerAttackLocked) return; // Lock attacks during D3 death sequence
+                if (balance < betAmount) return; // Cannot shoot with insufficient balance
 
                 const dx = mouseX - player.x,
                     dy = mouseY - player.y;
@@ -6193,6 +6197,8 @@
                                     autoTarget.isD4 &&
                                     autoTarget.state !== "normal"
                                 ) {
+                                    laserAlpha = 0;
+                                } else if (balance < betAmount) {
                                     laserAlpha = 0;
                                 } else {
                                     // Auto damage processing
@@ -10293,6 +10299,11 @@ function lockLandscape() {
 
 const API_BASE = window.location.origin;
 
+function startPeriodicSync() {
+    if (syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(syncBalanceNow, 30000);
+}
+
 function initBalanceFromServer() {
     // Try stored token first (from dashboard or previous session)
     const storedToken = localStorage.getItem('token');
@@ -10301,6 +10312,7 @@ function initBalanceFromServer() {
         fetchBalance();
         // Flush any unsynced deltas from a previous session
         flushUnsyncedDeltas();
+        startPeriodicSync();
     }
 
     // Fall back to Telegram WebApp auth
@@ -10330,6 +10342,7 @@ function initBalanceFromServer() {
                     }
                     // Flush any unsynced deltas from a previous session
                     flushUnsyncedDeltas();
+                    startPeriodicSync();
                 }
             })
             .catch(() => { /* offline mode — local balance only */ });
@@ -10375,13 +10388,17 @@ async function syncKills() {
 }
 
 async function syncBalanceNow() {
-    if (!authToken) return;
+    if (!authToken || syncMutex) return;
+    syncMutex = true;
+
+    // Flush pending rewards so sessionTotalWins is up to date
+    flushPendingRewards();
 
     const pendingBets = sessionTotalBets - lastSyncedBets;
     const pendingWins = sessionTotalWins - lastSyncedWins;
     const net = pendingWins - pendingBets;
 
-    if (net === 0) return;
+    if (net === 0) { syncMutex = false; return; }
 
     try {
         if (net > 0) {
@@ -10418,6 +10435,7 @@ async function syncBalanceNow() {
     } catch (e) {
         console.warn('Sync failed (offline?):', e.message);
     }
+    syncMutex = false;
 }
 
 // ── Exit confirmation ──────────────────────────────────────────
@@ -10434,6 +10452,7 @@ function hideExitConfirmation() {
 // ── localStorage backup for unsynced deltas ────────────────────
 function savePendingDeltas() {
     if (!authToken) return;
+    flushPendingRewards();
     const pendingBets = sessionTotalBets - lastSyncedBets;
     const pendingWins = sessionTotalWins - lastSyncedWins;
     const net = pendingWins - pendingBets;
@@ -10490,16 +10509,13 @@ function flushUnsyncedDeltas() {
 // ── Save deltas when page becomes hidden (close / app switch / screen off) ──
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;
-    if (syncInterval) clearInterval(syncInterval);
+    if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
     if (!authToken) return;
-    const pendingBets = sessionTotalBets - lastSyncedBets;
-    const pendingWins = sessionTotalWins - lastSyncedWins;
-    const net = pendingWins - pendingBets;
-    if (net === 0) {
-        try { localStorage.removeItem('pendingSyncNet'); } catch (e) {}
-        return;
-    }
-    try { localStorage.setItem('pendingSyncNet', net.toString()); } catch (e) {}
+    // Flush pending rewards then save + sendBeacon
+    flushPendingRewards();
+    savePendingDeltas();
+    const net = parseInt(localStorage.getItem('pendingSyncNet') || '0', 10);
+    if (net === 0) return;
     const endpoint = net > 0 ? '/api/game/win' : '/api/game/bet';
     const amount = net > 0 ? net : -net;
     try {

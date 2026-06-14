@@ -1445,6 +1445,7 @@
                             }
                             localStorage.setItem('playerRank', user.rank || 'Cadet');
                             updateDashboard(user);
+                            startBalancePolling();
                             return;
                         }
                     } catch {}
@@ -1484,10 +1485,28 @@
                     }
                     localStorage.setItem('playerRank', data.user.rank || 'Cadet');
                     updateDashboard(data.user);
+                    startBalancePolling();
                 }
                 } catch (err) {
                     console.error('Auth failed:', err);
                 }
+            }
+
+            function startBalancePolling() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                setInterval(async () => {
+                    try {
+                        const res = await fetch(API_BASE + '/api/auth/me', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        if (res.ok) {
+                            const user = await res.json();
+                            document.querySelector('#profileTokens .token:first-child .val').textContent = Number(user.sk_balance).toLocaleString();
+                            document.querySelector('#profileTokens .token:last-child .val').textContent = Number(user.skj_balance).toLocaleString();
+                        }
+                    } catch (e) {}
+                }, 30000);
             }
 
             const RANK_THRESHOLDS = [

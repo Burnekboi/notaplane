@@ -47,16 +47,15 @@ router.post('/bet', async (req, res) => {
   if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid bet amount' });
 
   try {
-    const user = await User.findById(req.user.userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.sk_balance < amount) return res.status(400).json({ error: 'Insufficient SK balance' });
+    const user = await User.findOneAndUpdate(
+      { _id: req.user.userId, sk_balance: { $gte: amount } },
+      { $inc: { sk_balance: -amount, total_wagered: amount } },
+      { new: true }
+    );
+    if (!user) return res.status(400).json({ error: 'Insufficient SK balance' });
 
-    const balanceBefore = user.sk_balance;
-    const balanceAfter = balanceBefore - amount;
-
-    user.sk_balance = balanceAfter;
-    user.total_wagered += amount;
-    await user.save();
+    const balanceAfter = user.sk_balance;
+    const balanceBefore = balanceAfter + amount;
 
     await Transaction.create({
       user_id: user._id,
@@ -78,15 +77,15 @@ router.post('/win', async (req, res) => {
   if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid win amount' });
 
   try {
-    const user = await User.findById(req.user.userId);
+    const user = await User.findOneAndUpdate(
+      { _id: req.user.userId },
+      { $inc: { sk_balance: amount, total_won: amount } },
+      { new: true }
+    );
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const balanceBefore = user.sk_balance;
-    const balanceAfter = balanceBefore + amount;
-
-    user.sk_balance = balanceAfter;
-    user.total_won += amount;
-    await user.save();
+    const balanceAfter = user.sk_balance;
+    const balanceBefore = balanceAfter - amount;
 
     await Transaction.create({
       user_id: user._id,

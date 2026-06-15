@@ -1918,7 +1918,7 @@
                                 hasAutoLightning = true;
                                 updateBuyWeaponUI();
                                 document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
-                                showNotif('Auto Lightning Beam purchased!');
+                                showNotif('⚡ Lightning Beam Activated! ⚡');
                             } else {
                                 showNotif(data.error || 'Purchase failed');
                             }
@@ -1966,7 +1966,7 @@
                         if (res.ok) {
                             hasAutoLightning = true;
                             updateBuyWeaponUI();
-                            showNotif('Auto Lightning Beam purchased!');
+                            showNotif('⚡ Lightning Beam Activated! ⚡');
                         } else {
                             showNotif(data.error || 'Purchase failed');
                         }

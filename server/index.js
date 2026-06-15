@@ -37,6 +37,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Public config (no auth required)
+app.get('/api/config', (req, res) => {
+  res.json({
+    buy_recipient_address: process.env.BUY_RECIPIENT_ADDRESS || '',
+  });
+});
+
 // Serve static files (game assets + HTML) — AFTER explicit routes
 app.use(express.static(path.join(__dirname, '..')));
 

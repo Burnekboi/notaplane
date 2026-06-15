@@ -1474,9 +1474,20 @@
                 });
             });
 
-            const RECIPIENT_ADDRESS = 'UQAkFwGxNAV5Lf7qjO3eF0mTGiLQ5M6s7R8c9D0eF1gH2iJ3kL4mN5oP6qR7sT8uV9wX0yZ1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV2wX3yZ4';
+            let RECIPIENT_ADDRESS = '';
+
+            async function initBuyConfig() {
+                try {
+                    const res = await fetch(API_BASE + '/api/config');
+                    const data = await res.json();
+                    RECIPIENT_ADDRESS = data.buy_recipient_address || '';
+                } catch (e) {
+                    console.warn('Failed to load buy config:', e);
+                }
+            }
 
             async function processBuy(skAmount, tonsAmount, nanoAmount) {
+                if (!RECIPIENT_ADDRESS) return showNotif('Buy configuration not loaded');
                 try {
                     const tx = {
                         validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -1488,7 +1499,6 @@
                     const result = await tonConnectUI.sendTransaction(tx);
                     if (result && result.boc) {
                         document.getElementById('buyModal').style.display = 'none';
-                        // Notify backend to credit SK tokens
                         const token = localStorage.getItem('token');
                         if (token) {
                             try {
@@ -1796,6 +1806,7 @@
             });
 
             initTonConnect();
+            initBuyConfig();
             initAuth();
         </script>
         <script>

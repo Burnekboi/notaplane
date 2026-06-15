@@ -376,10 +376,8 @@
                 <div class="buyDivider"></div>
                 <h2 style="text-align:center;font-size:18px;letter-spacing:2px;margin-bottom:14px;color:#ffd866;">WEAPONS</h2>
                 <div class="buyWeapon" id="buyWeaponAuto">
-                    <div class="buyWeaponSprite" id="lightningBallWrap">
-                        <div class="bolt1"></div>
-                        <div class="bolt2"></div>
-                    </div>
+                    <div class="bolt1"></div>
+                    <div class="bolt2"></div>
                     <div class="buyInfo">
                         <span class="buyAmount">Auto Lightning Beam</span>
                         <span class="buyDesc">Automatic lightning attacks</span>
@@ -978,59 +976,59 @@
                 padding: 14px 16px;
                 margin-bottom: 10px;
             }
-            .buyWeaponSprite {
-                width: 48px;
-                height: 48px;
-                flex-shrink: 0;
-                border-radius: 4px;
-                background: #0a0a12;
+            .buyWeaponSprite { display: none; }
+            .buyWeapon {
                 position: relative;
                 overflow: hidden;
             }
-            @keyframes lightningFlash {
-                0%, 90%, 96%, 100% { background: #0a0a12; }
-                92% { background: rgba(200,220,255,0.15); }
-                94% { background: #0a0a12; }
-                98% { background: rgba(200,220,255,0.08); }
+            @keyframes thunderFlash {
+                0%, 88%, 94%, 100% { background: rgba(255,200,100,0.05); }
+                90% { background: rgba(180,210,255,0.12); }
+                92% { background: rgba(255,200,100,0.05); }
+                96% { background: rgba(180,210,255,0.06); }
             }
             @keyframes boltFlicker1 {
-                0%, 88%, 100% { opacity: 0; }
-                90% { opacity: 0.6; }
-                91% { opacity: 0; }
-                93% { opacity: 0.3; }
-                95% { opacity: 0; }
+                0%, 85%, 100% { opacity: 0; }
+                87% { opacity: 0.5; }
+                88% { opacity: 0; }
+                91% { opacity: 0.25; }
+                93% { opacity: 0; }
             }
             @keyframes boltFlicker2 {
-                0%, 85%, 100% { opacity: 0; }
-                87% { opacity: 0.4; }
-                88% { opacity: 0; }
-                97% { opacity: 0.2; }
+                0%, 90%, 100% { opacity: 0; }
+                92% { opacity: 0.35; }
+                93% { opacity: 0; }
+                97% { opacity: 0.15; }
                 99% { opacity: 0; }
             }
-            #lightningBallWrap { animation: lightningFlash 4s infinite; }
-            .bolt1, .bolt2 {
+            #buyWeaponAuto { animation: thunderFlash 3.5s infinite; }
+            #buyWeaponAuto .bolt1, #buyWeaponAuto .bolt2 {
                 position: absolute;
+                pointer-events: none;
                 top: 0; left: 50%;
                 width: 2px; height: 100%;
-                background: rgba(180,210,255,0.5);
+                background: rgba(180,210,255,0.4);
                 transform: translateX(-50%) skewX(-8deg);
                 border-radius: 1px;
             }
-            .bolt1 {
-                left: 30%;
-                height: 70%;
-                top: 15%;
-                background: rgba(200,220,255,0.35);
+            #buyWeaponAuto .bolt1 {
+                left: 20%;
+                height: 80%;
+                top: 10%;
+                background: rgba(200,220,255,0.3);
                 transform: translateX(-50%) skewX(5deg) rotate(2deg);
-                animation: boltFlicker1 3.5s infinite;
+                animation: boltFlicker1 4s infinite;
             }
-            .bolt2 {
-                left: 65%;
-                height: 60%;
-                top: 20%;
-                background: rgba(180,210,255,0.3);
+            #buyWeaponAuto .bolt2 {
+                left: 75%;
+                height: 65%;
+                top: 18%;
+                background: rgba(180,210,255,0.25);
                 transform: translateX(-50%) skewX(-6deg) rotate(-3deg);
-                animation: boltFlicker2 4.2s infinite;
+                animation: boltFlicker2 4.5s infinite;
+            }
+            #buyWeaponAuto.owned {
+                animation: none;
             }
             .buyDesc {
                 font-size: 11px;

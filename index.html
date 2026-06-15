@@ -1423,6 +1423,7 @@
                     const pr = pendingRewards[i];
                     if (now >= pr.readyAt) {
                         balance += pr.amount;
+                        if (balance >= betAmount) window._autoNoBalanceNotified = false;
                         sessionTotalWins += pr.amount;
                         baseRewardPopups.push({
                             text: "+" + pr.amount.toString(),
@@ -2031,8 +2032,8 @@
             }
 
             function fireNukeAt(target) {
-                if (playerAttackLocked) return; // Lock attacks during D3 death sequence
-                if (balance < betAmount * NUKE_STRIKE_COST_MULTIPLIER) return;
+                if (playerAttackLocked) return;
+                if (balance < betAmount * NUKE_STRIKE_COST_MULTIPLIER) { showNotification('Not Enough Balance'); return; }
 
                 const dx = target.x - player.x,
                     dy = target.y - player.y;
@@ -2081,7 +2082,7 @@
 
             function fireDragonStrikeAt(target, ts = performance.now()) {
                 if (playerAttackLocked || !isTargetable(target)) return;
-                if (balance < betAmount * DRAGON_STRIKE_COST_MULTIPLIER) return;
+                if (balance < betAmount * DRAGON_STRIKE_COST_MULTIPLIER) { showNotification('Not Enough Balance'); return; }
 
                 rtp.spend();
                 balance -= betAmount * DRAGON_STRIKE_COST_MULTIPLIER;
@@ -2775,8 +2776,8 @@
             });
 
             function fireBullet() {
-                if (playerAttackLocked) return; // Lock attacks during D3 death sequence
-                if (balance < betAmount) return; // Cannot shoot with insufficient balance
+                if (playerAttackLocked) return;
+                if (balance < betAmount) { showNotification('Not Enough Balance'); return; }
 
                 const dx = mouseX - player.x,
                     dy = mouseY - player.y;
@@ -6204,6 +6205,7 @@
                                     laserAlpha = 0;
                                 } else if (balance < betAmount) {
                                     laserAlpha = 0;
+                                    if (!window._autoNoBalanceNotified) { showNotification('Not Enough Balance'); window._autoNoBalanceNotified = true; }
                                 } else {
                                     // Auto damage processing
 

@@ -66,4 +66,56 @@ router.post('/buy-sk', async (req, res) => {
   }
 });
 
+const AUTO_LIGHTNING_SK_PRICE = 69999;
+const AUTO_LIGHTNING_TON_PRICE = 5.5;
+
+router.post('/buy-auto-lightning', async (req, res) => {
+  try {
+    const { payment_method, tx_boc } = req.body;
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.has_auto_lightning) return res.status(400).json({ error: 'Already owned' });
+
+    if (payment_method === 'sk') {
+      if (user.sk_balance < AUTO_LIGHTNING_SK_PRICE) {
+        return res.status(400).json({ error: 'Insufficient SK balance' });
+      }
+      const before = user.sk_balance;
+      user.sk_balance -= AUTO_LIGHTNING_SK_PRICE;
+      user.has_auto_lightning = true;
+      await user.save();
+      await Transaction.create({
+        user_id: user._id,
+        type: 'buy',
+        token: 'SK',
+        amount: -AUTO_LIGHTNING_SK_PRICE,
+        balance_before: before,
+        balance_after: user.sk_balance,
+        reference: 'Auto Lightning Beam (SK)',
+      });
+      return res.json({ has_auto_lightning: true, sk_balance: user.sk_balance });
+    }
+
+    if (payment_method === 'ton') {
+      if (!tx_boc) return res.status(400).json({ error: 'Missing tx_boc' });
+      user.has_auto_lightning = true;
+      await user.save();
+      await Transaction.create({
+        user_id: user._id,
+        type: 'buy',
+        token: 'SK',
+        amount: 0,
+        balance_before: user.sk_balance,
+        balance_after: user.sk_balance,
+        reference: `Auto Lightning Beam (${AUTO_LIGHTNING_TON_PRICE} TON)`,
+      });
+      return res.json({ has_auto_lightning: true, sk_balance: user.sk_balance });
+    }
+
+    res.status(400).json({ error: 'Invalid payment method' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

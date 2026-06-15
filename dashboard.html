@@ -373,6 +373,23 @@
                     <div class="buyPrice">12.5 TON</div>
                     <button class="buyBuyBtn">Buy</button>
                 </div>
+                <div class="buyDivider"></div>
+                <h2 style="text-align:center;font-size:18px;letter-spacing:2px;margin-bottom:14px;color:#ffd866;">WEAPONS</h2>
+                <div class="buyWeapon" id="buyWeaponAuto">
+                    <canvas id="lightningBallCanvas" class="buyWeaponSprite"></canvas>
+                    <div class="buyInfo">
+                        <span class="buyAmount">Auto Lightning Beam</span>
+                        <span class="buyDesc">Automatic lightning attacks</span>
+                    </div>
+                    <div class="buyWeaponPrices">
+                        <span class="buyWeaponPrice">69,999 SK</span>
+                        <span class="buyWeaponPrice ton">5.5 TON</span>
+                    </div>
+                    <div class="buyWeaponBtns">
+                        <button class="buyWeaponBtn sk" data-payment="sk">Buy SK</button>
+                        <button class="buyWeaponBtn ton" data-payment="ton">Buy TON</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="notifModal">
@@ -942,6 +959,89 @@
             }
             .buyBuyBtn:active {
                 transform: scale(0.97);
+            }
+            .buyDivider {
+                height: 1px;
+                background: rgba(255,200,100,0.2);
+                margin: 18px 0;
+            }
+            .buyWeapon {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                background: rgba(255,200,100,0.05);
+                border: 1px solid rgba(255,200,100,0.12);
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 10px;
+            }
+            .buyWeaponSprite {
+                width: 48px;
+                height: 48px;
+                flex-shrink: 0;
+                object-fit: contain;
+            }
+            .buyDesc {
+                font-size: 11px;
+                font-family: Arial, sans-serif;
+                color: rgba(255,216,102,0.5);
+            }
+            .buyWeaponPrices {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+            }
+            .buyWeaponPrice {
+                font-size: 13px;
+                color: #ffd866;
+                letter-spacing: 1px;
+                white-space: nowrap;
+            }
+            .buyWeaponPrice.ton {
+                color: #5dff5d;
+            }
+            .buyWeaponBtns {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                flex-shrink: 0;
+            }
+            .buyWeaponBtn {
+                padding: 4px 12px;
+                border: 1px solid rgba(255,200,100,0.4);
+                border-radius: 4px;
+                background: linear-gradient(180deg, rgba(255,200,100,0.2), rgba(200,140,40,0.1));
+                color: #ffd866;
+                font: bold 10px 'Impact', 'Arial Black', sans-serif;
+                letter-spacing: 1px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .buyWeaponBtn:hover {
+                background: linear-gradient(180deg, rgba(255,200,100,0.35), rgba(200,140,40,0.2));
+                border-color: rgba(255,220,140,0.7);
+            }
+            .buyWeaponBtn:active {
+                transform: scale(0.95);
+            }
+            .buyWeaponBtn.ton {
+                border-color: rgba(93,255,93,0.4);
+                color: #5dff5d;
+            }
+            .buyWeaponBtn.ton:hover {
+                border-color: rgba(93,255,93,0.7);
+            }
+            .buyWeaponBtn.owned {
+                background: rgba(100,200,100,0.15);
+                border-color: rgba(100,200,100,0.3);
+                color: rgba(100,200,100,0.6);
+                cursor: default;
+                pointer-events: none;
+            }
+            .buyWeapon.owned {
+                border-color: rgba(100,200,100,0.2);
+                background: rgba(100,200,100,0.05);
             }
         </style>
         <script>
@@ -1558,6 +1658,90 @@
                     document.getElementById('aboutModal').style.display = 'none';
                 }
             });
+
+            // Auto Lightning Beam buy handlers
+            document.querySelectorAll('.buyWeaponBtn').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    if (hasAutoLightning) return;
+                    const token = localStorage.getItem('token');
+                    if (!token) return showNotif('Not logged in');
+                    const payment = btn.dataset.payment;
+
+                    if (payment === 'sk') {
+                        try {
+                            const res = await fetch(API_BASE + '/api/wallet/buy-auto-lightning', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer ' + token
+                                },
+                                body: JSON.stringify({ payment_method: 'sk' })
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                                hasAutoLightning = true;
+                                updateBuyWeaponUI();
+                                document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                                showNotif('Auto Lightning Beam purchased!');
+                            } else {
+                                showNotif(data.error || 'Purchase failed');
+                            }
+                        } catch (e) {
+                            showNotif('Connection error');
+                        }
+                    } else if (payment === 'ton') {
+                        if (!tonConnectUI) return showNotif('Wallet system not available');
+                        if (!tonWallet) {
+                            tonConnectUI.openModal();
+                            const unsub = tonConnectUI.onStatusChange((w) => {
+                                if (w && w.account) {
+                                    unsub();
+                                    processBuyAutoLightning(token);
+                                }
+                            });
+                            return;
+                        }
+                        processBuyAutoLightning(token);
+                    }
+                });
+            });
+
+            async function processBuyAutoLightning(token) {
+                if (!RECIPIENT_ADDRESS) return showNotif('Buy configuration not loaded');
+                const rawAddr = tonToRaw(RECIPIENT_ADDRESS);
+                if (!rawAddr) return showNotif('Invalid recipient address');
+                const nano = BigInt(Math.floor(5.5 * 1_000_000_000));
+                try {
+                    const tx = {
+                        validUntil: Math.floor(Date.now() / 1000) + 600,
+                        messages: [{ address: rawAddr, amount: nano.toString() }]
+                    };
+                    const result = await tonConnectUI.sendTransaction(tx);
+                    if (result && result.boc) {
+                        const res = await fetch(API_BASE + '/api/wallet/buy-auto-lightning', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify({ payment_method: 'ton', tx_boc: result.boc })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            hasAutoLightning = true;
+                            updateBuyWeaponUI();
+                            showNotif('Auto Lightning Beam purchased!');
+                        } else {
+                            showNotif(data.error || 'Purchase failed');
+                        }
+                    }
+                } catch (e) {
+                    if (e.message && e.message.includes('rejected')) return;
+                    showNotif('Transaction failed: ' + (e.message || 'Unknown error'));
+                }
+            }
+
+            loadLightningSprite();
         </script>
         <script>
             // Initialize Telegram WebApp to hide URL header
@@ -1681,7 +1865,53 @@
                 }
             }
 
+            let hasAutoLightning = false;
+
+            function updateBuyWeaponUI() {
+                const wrap = document.getElementById('buyWeaponAuto');
+                const btns = wrap?.querySelectorAll('.buyWeaponBtn');
+                if (!wrap) return;
+                if (hasAutoLightning) {
+                    wrap.classList.add('owned');
+                    btns.forEach(b => { b.textContent = 'Owned'; b.className = 'buyWeaponBtn owned'; });
+                } else {
+                    wrap.classList.remove('owned');
+                    btns.forEach(b => {
+                        b.textContent = b.dataset.payment === 'sk' ? 'Buy SK' : 'Buy TON';
+                        b.className = 'buyWeaponBtn ' + b.dataset.payment;
+                    });
+                }
+            }
+
+            async function loadLightningSprite() {
+                try {
+                    const res = await fetch('assets/lightning ball.json');
+                    const atlas = await res.json();
+                    const keys = Object.keys(atlas.frames).sort((a, b) => {
+                        const na = parseInt(a.match(/\d+/)?.[0] || '0');
+                        const nb = parseInt(b.match(/\d+/)?.[0] || '0');
+                        return na - nb;
+                    });
+                    const first = atlas.frames[keys[0]];
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                        img.src = atlas.meta.image;
+                    });
+                    const canvas = document.getElementById('lightningBallCanvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = first.frame.w;
+                    canvas.height = first.frame.h;
+                    ctx.drawImage(img, first.frame.x, first.frame.y, first.frame.w, first.frame.h, 0, 0, first.frame.w, first.frame.h);
+                } catch (e) {
+                    console.warn('Failed to load lightning sprite:', e);
+                }
+            }
+
             function updateDashboard(user) {
+                hasAutoLightning = user.has_auto_lightning || false;
                 document.querySelector('#profileInfo .name').textContent = user.first_name || 'Player';
                 document.querySelector('#profileInfo .id').textContent = 'ID: SK-' + String(user.telegram_id).slice(-4).padStart(4, '0');
                 document.querySelector('#profileTokens .token:first-child .val').textContent = Number(user.sk_balance).toLocaleString();
@@ -1692,6 +1922,7 @@
                 checkReferralStatus();
                 checkTgChannelStatus();
                 checkCommunityStatus();
+                updateBuyWeaponUI();
             }
 
             async function fetchAndDisplayAchievements() {

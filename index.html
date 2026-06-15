@@ -409,6 +409,10 @@
                 color: #4cff4c;
                 text-shadow: 0 0 12px rgba(76,255,76,0.6);
             }
+            #autoBtn.locked {
+                color: rgba(255,100,100,0.6);
+                cursor: not-allowed;
+            }
             #balanceDisplay {
                 pointer-events: none;
             }
@@ -785,6 +789,7 @@
                 document.getElementById('dragonBtn').style.display = '';
                 // Initialize balance from server (non-blocking)
                 setTimeout(initBalanceFromServer, 100);
+                updateAutoBtnLock();
             }
 
             // Check for auth token in URL (passed from dashboard)
@@ -2373,11 +2378,17 @@
 
             const AUTO_FIRE_RATE = 120;
 
+            let hasAutoLightning = false;
+
             // AUTO button toggle
 
             const autoBtn = document.getElementById("autoBtn");
 
             autoBtn.addEventListener("click", () => {
+                if (!hasAutoLightning) {
+                    showNotification('Auto Lightning Beam is locked. Purchase it from the dashboard!');
+                    return;
+                }
                 autoMode = !autoMode;
 
                 autoBtn.classList.toggle("active", autoMode);
@@ -10294,7 +10305,19 @@ async function initBalanceFromServer() {
     } catch (e) { /* Telegram not available — local balance only */ }
 }
 
-async function fetchBalance() {
+        function updateAutoBtnLock() {
+    const btn = document.getElementById('autoBtn');
+    if (!btn) return;
+    if (hasAutoLightning) {
+        btn.classList.remove('locked');
+    } else {
+        btn.classList.add('locked');
+        autoMode = false;
+        btn.classList.remove('active');
+    }
+}
+
+        async function fetchBalance() {
     if (!authToken) return;
     try {
         const res = await fetch(API_BASE + '/api/auth/me', {
@@ -10306,6 +10329,8 @@ async function fetchBalance() {
                 serverBalance = data.sk_balance;
                 balance = data.sk_balance;
             }
+            hasAutoLightning = data.has_auto_lightning || false;
+            updateAutoBtnLock();
         }
     } catch (e) { /* offline */ }
 }

@@ -113,6 +113,7 @@ router.post('/telegram', async (req, res) => {
         referral_code: user.referral_code,
         verified_referrals: verifiedReferrals,
         tg_channel_claimed: user.tg_channel_claimed || false,
+        has_auto_lightning: user.has_auto_lightning || false,
       },
     });
   } catch (err) {
@@ -148,6 +149,7 @@ router.get('/me', require('../middleware/auth').authMiddleware, async (req, res)
       referral_code: user.referral_code,
       verified_referrals: verifiedReferrals,
       tg_channel_claimed: user.tg_channel_claimed || false,
+      has_auto_lightning: user.has_auto_lightning || false,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

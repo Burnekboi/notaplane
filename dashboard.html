@@ -1701,17 +1701,12 @@
                     if (!res.ok) return;
                     const data = await res.json();
                     const statusEl = document.getElementById('adStatus');
-                    if (data.can_watch) {
+                    if (data.claimed) {
+                        statusEl.textContent = 'Claimed';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                    } else {
                         statusEl.textContent = 'Available';
                         statusEl.style.color = '#5dff5d';
-                    } else if (data.ad_count_today >= data.max_daily_ads) {
-                        statusEl.textContent = 'Daily limit';
-                        statusEl.style.color = 'rgba(255,216,102,0.4)';
-                    } else if (data.cooldown_remaining > 0) {
-                        const sec = Math.ceil(data.cooldown_remaining / 1000);
-                        const min = Math.floor(sec / 60);
-                        statusEl.textContent = `${min}m ${sec % 60}s`;
-                        statusEl.style.color = 'rgba(255,216,102,0.4)';
                     }
                 } catch (e) {}
             }
@@ -1747,11 +1742,8 @@
                         headers: { 'Authorization': 'Bearer ' + token }
                     });
                     const statusData = await statusRes.json();
-                    if (!statusData.can_watch) {
-                        if (statusData.ad_count_today >= statusData.max_daily_ads) {
-                            return showNotif('Daily ad limit reached');
-                        }
-                        return showNotif('Please wait before watching another ad');
+                    if (statusData.claimed) {
+                        return showNotif('You already claimed this reward');
                     }
                 } catch (e) {}
 

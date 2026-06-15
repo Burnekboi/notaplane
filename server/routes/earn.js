@@ -370,4 +370,63 @@ router.get('/richads-reward/status', async (req, res) => {
   }
 });
 
+const MONETAG_REWARD = 500;
+const MONETAG_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+router.post('/monetag-reward', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = Date.now();
+    const lastAd = user.last_monetag_watch ? new Date(user.last_monetag_watch).getTime() : 0;
+    if (now - lastAd < MONETAG_COOLDOWN_MS) {
+      return res.status(400).json({ error: 'Already claimed today' });
+    }
+
+    const balanceBefore = user.sk_balance;
+    user.sk_balance += MONETAG_REWARD;
+    user.last_monetag_watch = new Date();
+
+    await Transaction.create({
+      user_id: user._id,
+      type: 'earn',
+      token: 'SK',
+      amount: MONETAG_REWARD,
+      balance_before: balanceBefore,
+      balance_after: user.sk_balance,
+      reference: 'monetag_watch',
+    });
+
+    await user.save();
+
+    res.json({
+      sk_balance: user.sk_balance,
+      reward: MONETAG_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/monetag-reward/status', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = Date.now();
+    const lastAd = user.last_monetag_watch ? new Date(user.last_monetag_watch).getTime() : 0;
+    const canWatch = now - lastAd >= MONETAG_COOLDOWN_MS;
+    const cooldownRemaining = Math.max(0, MONETAG_COOLDOWN_MS - (now - lastAd));
+
+    res.json({
+      can_watch: canWatch,
+      cooldown_remaining: cooldownRemaining,
+      reward: MONETAG_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

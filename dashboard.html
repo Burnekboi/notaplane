@@ -6,6 +6,7 @@
         <script src="tonconnect-ui.min.js"></script>
         <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
         <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
+        <script src='//libtl.com/sdk.js' data-zone='11151650' data-sdk='show_11151650'></script>
         <script>
             window.TelegramAdsController = new TelegramAdsController();
             window.TelegramAdsController.initialize({
@@ -364,7 +365,7 @@
                 </div>
                 <div class="earnTask" id="earnAd">
                     <div class="earnInfo">
-                        <span class="earnName">Watch Ad</span>
+                        <span class="earnName">Watch Ad 1</span>
                         <span class="earnDesc" id="adDesc">Watch a short ad to earn rewards</span>
                     </div>
                     <div class="earnRight">
@@ -374,12 +375,22 @@
                 </div>
                 <div class="earnTask" id="earnRichAds">
                     <div class="earnInfo">
-                        <span class="earnName">Watch Ad +</span>
+                        <span class="earnName">Watch Ad 2</span>
                         <span class="earnDesc" id="richadsDesc">Watch a RichAds ad to earn rewards</span>
                     </div>
                     <div class="earnRight">
                         <div class="earnReward">+500 <span class="earnToken">SK</span></div>
                         <div class="earnCount" id="richadsStatus">Available</div>
+                    </div>
+                </div>
+                <div class="earnTask" id="earnMonetag">
+                    <div class="earnInfo">
+                        <span class="earnName">Watch Ad 3</span>
+                        <span class="earnDesc" id="monetagDesc">Watch a Monetag ad to earn rewards</span>
+                    </div>
+                    <div class="earnRight">
+                        <div class="earnReward">+500 <span class="earnToken">SK</span></div>
+                        <div class="earnCount" id="monetagStatus">Available</div>
                     </div>
                 </div>
             </div>
@@ -1857,6 +1868,79 @@
                 }
             });
 
+            async function checkMonetagStatus() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/monetag-reward/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const statusEl = document.getElementById('monetagStatus');
+                    if (data.can_watch) {
+                        statusEl.textContent = 'Available';
+                        statusEl.style.color = '#5dff5d';
+                    } else {
+                        statusEl.textContent = 'Claimed';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                    }
+                } catch (e) {}
+            }
+
+            async function claimMonetagReward(token) {
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/monetag-reward', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        showNotif('You earned +500 SK!');
+                    } else {
+                        showNotif(data.error || 'Reward failed');
+                    }
+                } catch (e) {
+                    showNotif('Connection error');
+                }
+                checkMonetagStatus();
+            }
+
+            document.getElementById('earnMonetag').addEventListener('click', async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return showNotif('Not logged in');
+
+                try {
+                    const statusRes = await fetch(API_BASE + '/api/earn/monetag-reward/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const statusData = await statusRes.json();
+                    if (!statusData.can_watch) {
+                        return showNotif('Come back in 24 hours');
+                    }
+                } catch (e) {}
+
+                // Try Monetag
+                if (typeof show_11151650 === 'function') {
+                    try {
+                        await show_11151650();
+                        await claimMonetagReward(token);
+                        return;
+                    } catch (e) {
+                        if (e.message && e.message.includes('rejected')) return;
+                    }
+                }
+
+                // Fallback
+                showNotif('Watching ad...');
+                await new Promise(r => setTimeout(r, 3000));
+                await claimMonetagReward(token);
+            });
+
             document.getElementById('swapBtn').addEventListener('click', () => {
                 showNotif('SWAP FEATURE - Coming Soon');
             });
@@ -2222,6 +2306,7 @@
                 checkWalletStatus();
                 checkAdStatus();
                 checkRichAdsStatus();
+                checkMonetagStatus();
                 updateBuyWeaponUI();
             }
 

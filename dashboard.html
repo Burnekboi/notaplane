@@ -376,7 +376,7 @@
                 <div class="buyDivider"></div>
                 <h2 style="text-align:center;font-size:18px;letter-spacing:2px;margin-bottom:14px;color:#ffd866;">WEAPONS</h2>
                 <div class="buyWeapon" id="buyWeaponAuto">
-                    <canvas id="lightningBallCanvas" class="buyWeaponSprite"></canvas>
+                    <div id="lightningBallSprite" class="buyWeaponSprite"></div>
                     <div class="buyInfo">
                         <span class="buyAmount">Auto Lightning Beam</span>
                         <span class="buyDesc">Automatic lightning attacks</span>
@@ -979,7 +979,8 @@
                 width: 48px;
                 height: 48px;
                 flex-shrink: 0;
-                object-fit: contain;
+                border-radius: 4px;
+                background-color: rgba(0,0,0,0.3);
             }
             .buyDesc {
                 font-size: 11px;
@@ -1893,18 +1894,17 @@
                         return na - nb;
                     });
                     const first = atlas.frames[keys[0]];
+                    const el = document.getElementById('lightningBallSprite');
+                    if (!el) return;
                     const img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    await new Promise((resolve, reject) => {
-                        img.onload = resolve;
-                        img.onerror = reject;
-                        img.src = atlas.meta.image;
-                    });
-                    const canvas = document.getElementById('lightningBallCanvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = first.frame.w;
-                    canvas.height = first.frame.h;
-                    ctx.drawImage(img, first.frame.x, first.frame.y, first.frame.w, first.frame.h, 0, 0, first.frame.w, first.frame.h);
+                    img.onload = () => {
+                        const s = Math.max(48 / first.frame.w, 48 / first.frame.h);
+                        el.style.backgroundImage = 'url(' + atlas.meta.image + ')';
+                        el.style.backgroundSize = (img.naturalWidth * s) + 'px ' + (img.naturalHeight * s) + 'px';
+                        el.style.backgroundPosition = (-first.frame.x * s) + 'px ' + (-first.frame.y * s) + 'px';
+                        el.style.backgroundRepeat = 'no-repeat';
+                    };
+                    img.src = atlas.meta.image;
                 } catch (e) {
                     console.warn('Failed to load lightning sprite:', e);
                 }

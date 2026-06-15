@@ -413,6 +413,26 @@
                 color: rgba(255,100,100,0.6);
                 cursor: not-allowed;
             }
+            #gameNotif {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0,0,0,0.85);
+                color: #ffdd44;
+                font: bold 24px Arial;
+                padding: 18px 36px;
+                border: 2px solid #ffdd44;
+                border-radius: 12px;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s;
+                z-index: 9999;
+                text-align: center;
+            }
+            #gameNotif.show {
+                opacity: 1;
+            }
             #balanceDisplay {
                 pointer-events: none;
             }
@@ -576,6 +596,8 @@
                 </div>
 
             </div>
+
+            <div id="gameNotif"></div>
 
             <div id="missileBtn">
                 <div id="missileBtnImgWrap">
@@ -2383,6 +2405,16 @@
             // AUTO button toggle
 
             const autoBtn = document.getElementById("autoBtn");
+            const notifEl = document.getElementById('gameNotif');
+            let notifTimer = null;
+            function showNotification(msg) {
+                if (notifTimer) clearTimeout(notifTimer);
+                notifEl.textContent = msg;
+                notifEl.classList.add('show');
+                notifTimer = setTimeout(() => {
+                    notifEl.classList.remove('show');
+                }, 2500);
+            }
 
             autoBtn.addEventListener("click", () => {
                 if (!hasAutoLightning) {

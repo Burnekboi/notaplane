@@ -5,6 +5,14 @@
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         <script src="tonconnect-ui.min.js"></script>
         <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+        <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
+        <script>
+            window.TelegramAdsController = new TelegramAdsController();
+            window.TelegramAdsController.initialize({
+                pubId: "1014643",
+                appId: "7762",
+            });
+        </script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -362,6 +370,16 @@
                     <div class="earnRight">
                         <div class="earnReward">+500 <span class="earnToken">SK</span></div>
                         <div class="earnCount" id="adStatus">Available</div>
+                    </div>
+                </div>
+                <div class="earnTask" id="earnRichAds">
+                    <div class="earnInfo">
+                        <span class="earnName">Watch Ad +</span>
+                        <span class="earnDesc" id="richadsDesc">Watch a RichAds ad to earn rewards</span>
+                    </div>
+                    <div class="earnRight">
+                        <div class="earnReward">+500 <span class="earnToken">SK</span></div>
+                        <div class="earnCount" id="richadsStatus">Available</div>
                     </div>
                 </div>
             </div>
@@ -1768,6 +1786,77 @@
                 await claimAdReward(token);
             });
 
+            async function checkRichAdsStatus() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/richads-reward/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const statusEl = document.getElementById('richadsStatus');
+                    if (data.can_watch) {
+                        statusEl.textContent = 'Available';
+                        statusEl.style.color = '#5dff5d';
+                    } else {
+                        statusEl.textContent = 'Claimed';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                    }
+                } catch (e) {}
+            }
+
+            async function claimRichAdsReward(token) {
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/richads-reward', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        showNotif('You earned +500 SK!');
+                    } else {
+                        showNotif(data.error || 'Reward failed');
+                    }
+                } catch (e) {
+                    showNotif('Connection error');
+                }
+                checkRichAdsStatus();
+            }
+
+            document.getElementById('earnRichAds').addEventListener('click', async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return showNotif('Not logged in');
+
+                try {
+                    const statusRes = await fetch(API_BASE + '/api/earn/richads-reward/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const statusData = await statusRes.json();
+                    if (!statusData.can_watch) {
+                        return showNotif('Come back in 24 hours');
+                    }
+                } catch (e) {}
+
+                // Try RichAds
+                try {
+                    const result = await window.TelegramAdsController.showAd();
+                    if (result) {
+                        await claimRichAdsReward(token);
+                    }
+                } catch (e) {
+                    if (e.message && e.message.includes('rejected')) return;
+                    // Fallback to simulated ad
+                    showNotif('Watching ad...');
+                    await new Promise(r => setTimeout(r, 3000));
+                    await claimRichAdsReward(token);
+                }
+            });
+
             document.getElementById('swapBtn').addEventListener('click', () => {
                 showNotif('SWAP FEATURE - Coming Soon');
             });
@@ -2132,6 +2221,7 @@
                 checkCommunityStatus();
                 checkWalletStatus();
                 checkAdStatus();
+                checkRichAdsStatus();
                 updateBuyWeaponUI();
             }
 

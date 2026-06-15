@@ -38,6 +38,7 @@ const userSchema = new mongoose.Schema({
   has_auto_lightning: { type: Boolean, default: false },
   wallet_connected_claimed: { type: Boolean, default: false },
   last_ad_watch: { type: Date, default: null },
+  last_richads_watch: { type: Date, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

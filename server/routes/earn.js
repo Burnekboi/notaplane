@@ -311,4 +311,63 @@ router.get('/ad-reward/status', async (req, res) => {
   }
 });
 
+const RICHADS_REWARD = 500;
+const RICHADS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+router.post('/richads-reward', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = Date.now();
+    const lastAd = user.last_richads_watch ? new Date(user.last_richads_watch).getTime() : 0;
+    if (now - lastAd < RICHADS_COOLDOWN_MS) {
+      return res.status(400).json({ error: 'Already claimed today' });
+    }
+
+    const balanceBefore = user.sk_balance;
+    user.sk_balance += RICHADS_REWARD;
+    user.last_richads_watch = new Date();
+
+    await Transaction.create({
+      user_id: user._id,
+      type: 'earn',
+      token: 'SK',
+      amount: RICHADS_REWARD,
+      balance_before: balanceBefore,
+      balance_after: user.sk_balance,
+      reference: 'richads_watch',
+    });
+
+    await user.save();
+
+    res.json({
+      sk_balance: user.sk_balance,
+      reward: RICHADS_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/richads-reward/status', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = Date.now();
+    const lastAd = user.last_richads_watch ? new Date(user.last_richads_watch).getTime() : 0;
+    const canWatch = now - lastAd >= RICHADS_COOLDOWN_MS;
+    const cooldownRemaining = Math.max(0, RICHADS_COOLDOWN_MS - (now - lastAd));
+
+    res.json({
+      can_watch: canWatch,
+      cooldown_remaining: cooldownRemaining,
+      reward: RICHADS_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

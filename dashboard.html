@@ -4,6 +4,7 @@
         <title>Space King Jackpot</title>
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         <script src="tonconnect-ui.min.js"></script>
+        <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -351,6 +352,16 @@
                     <div class="earnRight">
                         <div class="earnReward">+1000 <span class="earnToken">SK</span></div>
                         <div class="earnCount" id="walletStatus">Claim</div>
+                    </div>
+                </div>
+                <div class="earnTask" id="earnAd">
+                    <div class="earnInfo">
+                        <span class="earnName">Watch Ad</span>
+                        <span class="earnDesc" id="adDesc">Watch a short ad to earn rewards</span>
+                    </div>
+                    <div class="earnRight">
+                        <div class="earnReward">+500 <span class="earnToken">SK</span></div>
+                        <div class="earnCount" id="adStatus">Available</div>
                     </div>
                 </div>
             </div>
@@ -1387,6 +1398,7 @@
                 checkTgChannelStatus();
                 checkCommunityStatus();
                 checkWalletStatus();
+                checkAdStatus();
             });
 
             document.getElementById('earnClose').addEventListener('click', () => {
@@ -1679,6 +1691,82 @@
                 }
             }
 
+            async function checkAdStatus() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/ad-reward/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const statusEl = document.getElementById('adStatus');
+                    if (data.can_watch) {
+                        statusEl.textContent = 'Available';
+                        statusEl.style.color = '#5dff5d';
+                    } else if (data.ad_count_today >= data.max_daily_ads) {
+                        statusEl.textContent = 'Daily limit';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                    } else if (data.cooldown_remaining > 0) {
+                        const sec = Math.ceil(data.cooldown_remaining / 1000);
+                        const min = Math.floor(sec / 60);
+                        statusEl.textContent = `${min}m ${sec % 60}s`;
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                    }
+                } catch (e) {}
+            }
+
+            document.getElementById('earnAd').addEventListener('click', async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return showNotif('Not logged in');
+                if (!ADSGRAM_BLOCK_ID) return showNotif('Ads not configured');
+
+                try {
+                    const statusRes = await fetch(API_BASE + '/api/earn/ad-reward/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const statusData = await statusRes.json();
+                    if (!statusData.can_watch) {
+                        if (statusData.ad_count_today >= statusData.max_daily_ads) {
+                            return showNotif('Daily ad limit reached');
+                        }
+                        return showNotif('Please wait before watching another ad');
+                    }
+                } catch (e) {}
+
+                if (typeof window.Adsgram === 'undefined') {
+                    return showNotif('Ad system not loaded');
+                }
+
+                try {
+                    const ad = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+                    const result = await ad.show();
+                    if (result) {
+                        const res = await fetch(API_BASE + '/api/earn/ad-reward', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            }
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                            document.getElementById('adStatus').textContent = 'Available';
+                            document.getElementById('adStatus').style.color = '#5dff5d';
+                            showNotif('You earned +500 SK!');
+                        } else {
+                            showNotif(data.error || 'Reward failed');
+                        }
+                    }
+                } catch (e) {
+                    if (e.message && e.message.includes('rejected')) return;
+                    showNotif('Ad not completed');
+                }
+
+                checkAdStatus();
+            });
+
             document.getElementById('swapBtn').addEventListener('click', () => {
                 showNotif('SWAP FEATURE - Coming Soon');
             });
@@ -1720,12 +1808,14 @@
             });
 
             let RECIPIENT_ADDRESS = '';
+            let ADSGRAM_BLOCK_ID = '';
 
             async function initBuyConfig() {
                 try {
                     const res = await fetch(API_BASE + '/api/config');
                     const data = await res.json();
                     RECIPIENT_ADDRESS = data.buy_recipient_address || '';
+                    ADSGRAM_BLOCK_ID = data.adsgram_block_id || '';
                 } catch (e) {
                     console.warn('Failed to load buy config:', e);
                 }
@@ -2040,6 +2130,7 @@
                 checkTgChannelStatus();
                 checkCommunityStatus();
                 checkWalletStatus();
+                checkAdStatus();
                 updateBuyWeaponUI();
             }
 

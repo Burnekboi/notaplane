@@ -252,4 +252,89 @@ router.get('/wallet-connect/status', async (req, res) => {
   }
 });
 
+const AD_REWARD = 500;
+const AD_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_DAILY_ADS = 10;
+
+router.post('/ad-reward', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = Date.now();
+    const lastAd = user.last_ad_watch ? new Date(user.last_ad_watch).getTime() : 0;
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    let adCountToday = user.ad_count_today || 0;
+    if (!user.last_ad_watch || new Date(user.last_ad_watch) < todayStart) {
+      adCountToday = 0;
+    }
+
+    if (adCountToday >= MAX_DAILY_ADS) {
+      return res.status(400).json({ error: 'Daily ad limit reached' });
+    }
+
+    if (now - lastAd < AD_COOLDOWN_MS) {
+      const waitSec = Math.ceil((AD_COOLDOWN_MS - (now - lastAd)) / 1000);
+      return res.status(400).json({ error: `Please wait ${waitSec}s before watching another ad` });
+    }
+
+    const balanceBefore = user.sk_balance;
+    user.sk_balance += AD_REWARD;
+    user.last_ad_watch = new Date();
+    user.ad_count_today = adCountToday + 1;
+
+    await Transaction.create({
+      user_id: user._id,
+      type: 'earn',
+      token: 'SK',
+      amount: AD_REWARD,
+      balance_before: balanceBefore,
+      balance_after: user.sk_balance,
+      reference: 'ad_watch',
+    });
+
+    await user.save();
+
+    res.json({
+      sk_balance: user.sk_balance,
+      reward: AD_REWARD,
+      ad_count_today: user.ad_count_today,
+      max_daily_ads: MAX_DAILY_ADS,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/ad-reward/status', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = Date.now();
+    const lastAd = user.last_ad_watch ? new Date(user.last_ad_watch).getTime() : 0;
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    let adCountToday = user.ad_count_today || 0;
+    if (!user.last_ad_watch || new Date(user.last_ad_watch) < todayStart) {
+      adCountToday = 0;
+    }
+
+    const canWatch = adCountToday < MAX_DAILY_ADS && (now - lastAd >= AD_COOLDOWN_MS);
+    const cooldownRemaining = Math.max(0, AD_COOLDOWN_MS - (now - lastAd));
+
+    res.json({
+      can_watch: canWatch,
+      ad_count_today: adCountToday,
+      max_daily_ads: MAX_DAILY_ADS,
+      cooldown_remaining: cooldownRemaining,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

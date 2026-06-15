@@ -41,6 +41,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/config', (req, res) => {
   res.json({
     buy_recipient_address: process.env.BUY_RECIPIENT_ADDRESS || '',
+    adsgram_block_id: process.env.ADSGRAM_BLOCK_ID || '',
   });
 });
 

@@ -1701,12 +1701,12 @@
                     if (!res.ok) return;
                     const data = await res.json();
                     const statusEl = document.getElementById('adStatus');
-                    if (data.claimed) {
-                        statusEl.textContent = 'Claimed';
-                        statusEl.style.color = 'rgba(255,216,102,0.4)';
-                    } else {
+                    if (data.can_watch) {
                         statusEl.textContent = 'Available';
                         statusEl.style.color = '#5dff5d';
+                    } else {
+                        statusEl.textContent = 'Claimed';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
                     }
                 } catch (e) {}
             }
@@ -1742,8 +1742,8 @@
                         headers: { 'Authorization': 'Bearer ' + token }
                     });
                     const statusData = await statusRes.json();
-                    if (statusData.claimed) {
-                        return showNotif('You already claimed this reward');
+                    if (!statusData.can_watch) {
+                        return showNotif('Come back in 24 hours');
                     }
                 } catch (e) {}
 

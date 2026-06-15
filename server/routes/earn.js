@@ -253,19 +253,22 @@ router.get('/wallet-connect/status', async (req, res) => {
 });
 
 const AD_REWARD = 500;
+const AD_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 router.post('/ad-reward', async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    if (user.ad_claimed) {
-      return res.status(400).json({ error: 'Already claimed' });
+    const now = Date.now();
+    const lastAd = user.last_ad_watch ? new Date(user.last_ad_watch).getTime() : 0;
+    if (now - lastAd < AD_COOLDOWN_MS) {
+      return res.status(400).json({ error: 'Already claimed today' });
     }
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += AD_REWARD;
-    user.ad_claimed = true;
+    user.last_ad_watch = new Date();
 
     await Transaction.create({
       user_id: user._id,
@@ -293,8 +296,14 @@ router.get('/ad-reward/status', async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    const now = Date.now();
+    const lastAd = user.last_ad_watch ? new Date(user.last_ad_watch).getTime() : 0;
+    const canWatch = now - lastAd >= AD_COOLDOWN_MS;
+    const cooldownRemaining = Math.max(0, AD_COOLDOWN_MS - (now - lastAd));
+
     res.json({
-      claimed: user.ad_claimed || false,
+      can_watch: canWatch,
+      cooldown_remaining: cooldownRemaining,
       reward: AD_REWARD,
     });
   } catch (err) {

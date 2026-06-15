@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema({
   tg_community_claimed: { type: Boolean, default: false },
   has_auto_lightning: { type: Boolean, default: false },
   wallet_connected_claimed: { type: Boolean, default: false },
-  ad_claimed: { type: Boolean, default: false },
+  last_ad_watch: { type: Date, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

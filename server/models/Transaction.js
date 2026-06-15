@@ -5,7 +5,7 @@ const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['welcome_bonus', 'bet', 'win', 'earn', 'admin_add', 'admin_remove', 'transfer'],
+    enum: ['welcome_bonus', 'bet', 'win', 'earn', 'admin_add', 'admin_remove', 'transfer', 'buy'],
   },
   token: {
     type: String,

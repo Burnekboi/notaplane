@@ -345,6 +345,36 @@
                 </div>
             </div>
         </div>
+        <div id="buyModal">
+            <div id="buyContent">
+                <button id="buyClose" type="button">&times;</button>
+                <h2>BUY SK TOKENS</h2>
+                <div class="buyOption" data-sk="10000" data-tons="2.5">
+                    <img src="dashboard assets/SKcoin.png" class="buyCoin" alt="SK">
+                    <div class="buyInfo">
+                        <span class="buyAmount">10,000 SK Token</span>
+                    </div>
+                    <div class="buyPrice">2.5 TON</div>
+                    <button class="buyBuyBtn">Buy</button>
+                </div>
+                <div class="buyOption" data-sk="50000" data-tons="7.5">
+                    <img src="dashboard assets/SKcoin.png" class="buyCoin" alt="SK">
+                    <div class="buyInfo">
+                        <span class="buyAmount">50,000 SK Token</span>
+                    </div>
+                    <div class="buyPrice">7.5 TON</div>
+                    <button class="buyBuyBtn">Buy</button>
+                </div>
+                <div class="buyOption" data-sk="100000" data-tons="12.5">
+                    <img src="dashboard assets/SKcoin.png" class="buyCoin" alt="SK">
+                    <div class="buyInfo">
+                        <span class="buyAmount">100,000 SK Token</span>
+                    </div>
+                    <div class="buyPrice">12.5 TON</div>
+                    <button class="buyBuyBtn">Buy</button>
+                </div>
+            </div>
+        </div>
         <div id="notifModal">
             <div id="notifContent">
                 <h2 id="notifTitle">Space King Jackpot</h2>
@@ -814,6 +844,104 @@
             .achievement.completed {
                 border-color: rgba(100,200,100,0.2);
                 background: rgba(100,200,100,0.05);
+            }
+        </style>
+        <style>
+            #buyModal {
+                display: none;
+                position: fixed;
+                z-index: 10;
+                left: 0; top: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                justify-content: center;
+                align-items: center;
+                font-family: 'Impact', 'Arial Black', sans-serif;
+            }
+            #buyContent {
+                background: #111;
+                border: 2px solid rgba(255,200,100,0.5);
+                border-radius: 10px;
+                padding: 30px 35px;
+                max-width: 460px;
+                width: 90%;
+                position: relative;
+                color: #ffd866;
+                box-shadow: 0 0 40px rgba(255,200,80,0.2);
+            }
+            #buyContent h2 {
+                text-align: center;
+                font-size: 22px;
+                letter-spacing: 3px;
+                margin-bottom: 20px;
+            }
+            #buyClose {
+                position: absolute;
+                top: 8px; right: 14px;
+                background: none;
+                border: none;
+                color: #ffd866;
+                font-size: 28px;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+            }
+            .buyOption {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                background: rgba(255,200,100,0.05);
+                border: 1px solid rgba(255,200,100,0.12);
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 10px;
+            }
+            .buyCoin {
+                width: 32px;
+                height: 32px;
+                object-fit: contain;
+                flex-shrink: 0;
+            }
+            .buyInfo {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .buyAmount {
+                font-size: 15px;
+                letter-spacing: 1px;
+                color: #ffd866;
+            }
+            .buyPrice {
+                font-size: 15px;
+                color: #5dff5d;
+                white-space: nowrap;
+                letter-spacing: 1px;
+            }
+            .buyBuyBtn {
+                padding: 6px 18px;
+                border: 2px solid rgba(255,200,100,0.5);
+                border-radius: 6px;
+                background: linear-gradient(180deg, rgba(255,200,100,0.15), rgba(200,140,40,0.08));
+                color: #ffd866;
+                font: bold 14px 'Impact', 'Arial Black', sans-serif;
+                letter-spacing: 2px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-shadow: 0 0 10px rgba(255,200,80,0.4);
+                box-shadow: 0 0 20px rgba(255,200,80,0.1);
+                flex-shrink: 0;
+            }
+            .buyBuyBtn:hover {
+                background: linear-gradient(180deg, rgba(255,200,100,0.3), rgba(200,140,40,0.18));
+                border-color: rgba(255,220,140,0.8);
+                color: #fff3bf;
+                text-shadow: 0 0 16px rgba(255,220,100,0.7);
+                transform: scale(1.04);
+            }
+            .buyBuyBtn:active {
+                transform: scale(0.97);
             }
         </style>
         <script>
@@ -1311,8 +1439,87 @@
             });
 
             document.getElementById('buyBtn').addEventListener('click', () => {
-                showNotif('BUY FEATURE - Coming Soon');
+                document.getElementById('buyModal').style.display = 'flex';
             });
+
+            document.getElementById('buyClose').addEventListener('click', () => {
+                document.getElementById('buyModal').style.display = 'none';
+            });
+
+            document.getElementById('buyModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    document.getElementById('buyModal').style.display = 'none';
+                }
+            });
+
+            document.querySelectorAll('.buyBuyBtn').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const opt = btn.closest('.buyOption');
+                    const sk = opt.dataset.sk;
+                    const tons = parseFloat(opt.dataset.tons);
+                    const nano = BigInt(Math.floor(tons * 1_000_000_000));
+
+                    if (!tonConnectUI) return showNotif('Wallet system not available');
+                    if (!tonWallet) {
+                        tonConnectUI.openModal();
+                        const unsub = tonConnectUI.onStatusChange((w) => {
+                            if (w && w.account) {
+                                unsub();
+                                processBuy(sk, tons, nano);
+                            }
+                        });
+                        return;
+                    }
+                    processBuy(sk, tons, nano);
+                });
+            });
+
+            const RECIPIENT_ADDRESS = 'UQAkFwGxNAV5Lf7qjO3eF0mTGiLQ5M6s7R8c9D0eF1gH2iJ3kL4mN5oP6qR7sT8uV9wX0yZ1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV2wX3yZ4';
+
+            async function processBuy(skAmount, tonsAmount, nanoAmount) {
+                try {
+                    const tx = {
+                        validUntil: Math.floor(Date.now() / 1000) + 600,
+                        messages: [{
+                            address: RECIPIENT_ADDRESS,
+                            amount: nanoAmount.toString(),
+                        }]
+                    };
+                    const result = await tonConnectUI.sendTransaction(tx);
+                    if (result && result.boc) {
+                        document.getElementById('buyModal').style.display = 'none';
+                        // Notify backend to credit SK tokens
+                        const token = localStorage.getItem('token');
+                        if (token) {
+                            try {
+                                const res = await fetch(API_BASE + '/api/wallet/buy-sk', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': 'Bearer ' + token
+                                    },
+                                    body: JSON.stringify({
+                                        sk_amount: skAmount,
+                                        tons_amount: tonsAmount,
+                                        tx_boc: result.boc,
+                                        recipient: RECIPIENT_ADDRESS,
+                                    })
+                                });
+                                const data = await res.json();
+                                if (res.ok && data.sk_balance !== undefined) {
+                                    document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                                }
+                            } catch (e) {
+                                console.warn('Backend notification failed:', e);
+                            }
+                        }
+                        showNotif('Purchase successful! +' + Number(skAmount).toLocaleString() + ' SK added to your balance.');
+                    }
+                } catch (e) {
+                    if (e.message && e.message.includes('rejected')) return;
+                    showNotif('Transaction failed: ' + (e.message || 'Unknown error'));
+                }
+            }
 
             document.getElementById('aboutBtn').addEventListener('click', () => {
                 document.getElementById('aboutModal').style.display = 'flex';

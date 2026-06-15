@@ -28,4 +28,42 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+const BUY_TIERS = {
+  10000: 2.5,
+  50000: 7.5,
+  100000: 12.5,
+};
+
+router.post('/buy-sk', async (req, res) => {
+  try {
+    const { sk_amount, tons_amount, tx_boc, recipient } = req.body;
+    if (!sk_amount || !tons_amount || !tx_boc) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const expectedTons = BUY_TIERS[Number(sk_amount)];
+    if (!expectedTons || Math.abs(expectedTons - Number(tons_amount)) > 0.001) {
+      return res.status(400).json({ error: 'Invalid purchase tier' });
+    }
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const before = user.sk_balance;
+    user.sk_balance += Number(sk_amount);
+    await user.save();
+    await Transaction.create({
+      user_id: user._id,
+      type: 'buy',
+      token: 'SK',
+      amount: Number(sk_amount),
+      balance_before: before,
+      balance_after: user.sk_balance,
+      reference: `Buy ${Number(sk_amount).toLocaleString()} SK for ${tons_amount} TON`,
+    });
+    res.json({ sk_balance: user.sk_balance });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

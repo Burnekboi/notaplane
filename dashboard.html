@@ -1716,10 +1716,31 @@
                 } catch (e) {}
             }
 
+            async function claimAdReward(token) {
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/ad-reward', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        showNotif('You earned +500 SK!');
+                    } else {
+                        showNotif(data.error || 'Reward failed');
+                    }
+                } catch (e) {
+                    showNotif('Connection error');
+                }
+                checkAdStatus();
+            }
+
             document.getElementById('earnAd').addEventListener('click', async () => {
                 const token = localStorage.getItem('token');
                 if (!token) return showNotif('Not logged in');
-                if (!ADSGRAM_BLOCK_ID) return showNotif('Ads not configured');
 
                 try {
                     const statusRes = await fetch(API_BASE + '/api/earn/ad-reward/status', {
@@ -1734,37 +1755,25 @@
                     }
                 } catch (e) {}
 
-                if (typeof window.Adsgram === 'undefined') {
-                    return showNotif('Ad system not loaded');
-                }
-
-                try {
-                    const ad = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
-                    const result = await ad.show();
-                    if (result) {
-                        const res = await fetch(API_BASE + '/api/earn/ad-reward', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + token
-                            }
-                        });
-                        const data = await res.json();
-                        if (res.ok) {
-                            document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
-                            document.getElementById('adStatus').textContent = 'Available';
-                            document.getElementById('adStatus').style.color = '#5dff5d';
-                            showNotif('You earned +500 SK!');
-                        } else {
-                            showNotif(data.error || 'Reward failed');
+                // Try AdsGram if available, otherwise fall back to simulated ad
+                if (ADSGRAM_BLOCK_ID && typeof window.Adsgram !== 'undefined') {
+                    try {
+                        const ad = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+                        const result = await ad.show();
+                        if (result) {
+                            await claimAdReward(token);
                         }
+                        return;
+                    } catch (e) {
+                        if (e.message && e.message.includes('rejected')) return;
+                        // AdsGram failed — fall through to simulated ad
                     }
-                } catch (e) {
-                    if (e.message && e.message.includes('rejected')) return;
-                    showNotif('Ad not completed');
                 }
 
-                checkAdStatus();
+                // Simulated ad watch (fallback while AdsGram block is in moderation)
+                showNotif('Watching ad...');
+                await new Promise(r => setTimeout(r, 3000));
+                await claimAdReward(token);
             });
 
             document.getElementById('swapBtn').addEventListener('click', () => {

@@ -309,7 +309,7 @@
                         <span class="earnDesc" id="dailyDesc">Claim your daily reward</span>
                     </div>
                     <div class="earnRight">
-                        <div class="earnReward">+500</div>
+                        <div class="earnReward">+500 <span class="earnToken">SK</span></div>
                         <div class="earnCount" id="dailyStatus">Available</div>
                     </div>
                 </div>
@@ -319,7 +319,7 @@
                         <span class="earnDesc" id="inviteDesc">+1000 per invite (max 10)</span>
                     </div>
                     <div class="earnRight">
-                        <div class="earnReward">+1000</div>
+                        <div class="earnReward">+1000 <span class="earnToken">SK</span></div>
                         <div class="earnCount" id="inviteCount">0 / 10</div>
                     </div>
                 </div>
@@ -329,7 +329,7 @@
                         <span class="earnDesc" id="tgDesc">Follow @nirkagames</span>
                     </div>
                     <div class="earnRight">
-                        <div class="earnReward">+1,000</div>
+                        <div class="earnReward">+1,000 <span class="earnToken">SK</span></div>
                         <div class="earnCount" id="tgStatus">Claim</div>
                     </div>
                 </div>
@@ -339,8 +339,18 @@
                         <span class="earnDesc" id="communityDesc">Follow @NIRKACom</span>
                     </div>
                     <div class="earnRight">
-                        <div class="earnReward">+1,000</div>
+                        <div class="earnReward">+1,000 <span class="earnToken">SK</span></div>
                         <div class="earnCount" id="communityStatus">Claim</div>
+                    </div>
+                </div>
+                <div class="earnTask" id="earnWallet">
+                    <div class="earnInfo">
+                        <span class="earnName">Connect Wallet</span>
+                        <span class="earnDesc" id="walletDesc">Connect your TON wallet to claim</span>
+                    </div>
+                    <div class="earnRight">
+                        <div class="earnReward">+1000 <span class="earnToken">SK</span></div>
+                        <div class="earnCount" id="walletStatus">Claim</div>
                     </div>
                 </div>
             </div>
@@ -637,6 +647,11 @@
                 font-size: 11px;
                 font-family: Arial, sans-serif;
                 color: rgba(255,216,102,0.4);
+            }
+            .earnToken {
+                font-size: 10px;
+                color: rgba(255,216,102,0.4);
+                font-weight: normal;
             }
             #leaderboardModal {
                 display: none;
@@ -1371,6 +1386,7 @@
                 checkReferralStatus();
                 checkTgChannelStatus();
                 checkCommunityStatus();
+                checkWalletStatus();
             });
 
             document.getElementById('earnClose').addEventListener('click', () => {
@@ -1581,7 +1597,87 @@
                 }
             });
 
+            async function checkWalletStatus() {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/wallet-connect/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const statusEl = document.getElementById('walletStatus');
+                    const descEl = document.getElementById('walletDesc');
+                    if (data.claimed) {
+                        statusEl.textContent = 'Claimed';
+                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                        descEl.textContent = 'Reward claimed';
+                    } else if (tonWallet) {
+                        statusEl.textContent = 'Claim';
+                        statusEl.style.color = '#5dff5d';
+                        descEl.textContent = 'Wallet connected — claim your reward';
+                    } else {
+                        statusEl.textContent = 'Connect Wallet';
+                        statusEl.style.color = '#ffd866';
+                        descEl.textContent = 'Connect your TON wallet to claim';
+                    }
+                } catch (e) {}
+            }
 
+            document.getElementById('earnWallet').addEventListener('click', async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return showNotif('Not logged in');
+
+                try {
+                    const statusRes = await fetch(API_BASE + '/api/earn/wallet-connect/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const statusData = await statusRes.json();
+                    if (statusData.claimed) {
+                        return showNotif('You already claimed this reward!');
+                    }
+                } catch (e) {}
+
+                if (!tonWallet) {
+                    if (tonConnectUI) {
+                        tonConnectUI.openModal();
+                        const unsub = tonConnectUI.onStatusChange((w) => {
+                            if (w && w.account) {
+                                unsub();
+                                claimWalletReward(token);
+                            }
+                        });
+                    } else {
+                        showNotif('Wallet system not available');
+                    }
+                    return;
+                }
+                claimWalletReward(token);
+            });
+
+            async function claimWalletReward(token) {
+                try {
+                    const res = await fetch(API_BASE + '/api/earn/wallet-connect', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        document.querySelector('#profileTokens .token:first-child .val').textContent = Number(data.sk_balance).toLocaleString();
+                        document.getElementById('walletStatus').textContent = 'Claimed';
+                        document.getElementById('walletStatus').style.color = 'rgba(255,216,102,0.4)';
+                        document.getElementById('walletDesc').textContent = 'Reward claimed';
+                        showNotif('You claimed +1,000 SK!');
+                    } else {
+                        showNotif(data.error || 'Claim failed');
+                    }
+                } catch (e) {
+                    showNotif('Connection error');
+                }
+            }
 
             document.getElementById('swapBtn').addEventListener('click', () => {
                 showNotif('SWAP FEATURE - Coming Soon');
@@ -1943,6 +2039,7 @@
                 checkReferralStatus();
                 checkTgChannelStatus();
                 checkCommunityStatus();
+                checkWalletStatus();
                 updateBuyWeaponUI();
             }
 

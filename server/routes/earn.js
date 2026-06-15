@@ -15,6 +15,7 @@ const CHANNEL_USERNAME = '@nirkagames';
 const TG_COMMUNITY_REWARD = 1000;
 const COMMUNITY_USERNAME = '@NIRKACom';
 const COMMUNITY_LINK = 'https://t.me/NIRKACom';
+const WALLET_CONNECT_REWARD = 1000;
 
 function getUTCMidnight() {
   const now = new Date();
@@ -197,6 +198,54 @@ router.get('/community/status', async (req, res) => {
       reward: TG_COMMUNITY_REWARD,
       channel: COMMUNITY_USERNAME,
       link: COMMUNITY_LINK,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/wallet-connect', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.wallet_connected_claimed) {
+      return res.status(400).json({ error: 'Already claimed' });
+    }
+
+    const balanceBefore = user.sk_balance;
+    user.sk_balance += WALLET_CONNECT_REWARD;
+    user.wallet_connected_claimed = true;
+
+    await Transaction.create({
+      user_id: user._id,
+      type: 'earn',
+      token: 'SK',
+      amount: WALLET_CONNECT_REWARD,
+      balance_before: balanceBefore,
+      balance_after: user.sk_balance,
+      reference: 'wallet_connect',
+    });
+
+    await user.save();
+
+    res.json({
+      sk_balance: user.sk_balance,
+      reward: WALLET_CONNECT_REWARD,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/wallet-connect/status', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({
+      claimed: user.wallet_connected_claimed || false,
+      reward: WALLET_CONNECT_REWARD,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

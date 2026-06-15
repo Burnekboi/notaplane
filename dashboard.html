@@ -6,7 +6,15 @@
         <script src="tonconnect-ui.min.js"></script>
         <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
         <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
-        <script src='//libtl.com/sdk.js' data-zone='11151650' data-sdk='show_11151650'></script>
+        <script>
+            (function() {
+                var s = document.createElement('script');
+                s.src = 'https://libtl.com/sdk.js';
+                s.setAttribute('data-zone', '11151650');
+                s.setAttribute('data-sdk', 'show_11151650');
+                document.head.appendChild(s);
+            })();
+        </script>
         <script>
             window.TelegramAdsController = new TelegramAdsController();
             window.TelegramAdsController.initialize({
@@ -1931,7 +1939,21 @@
                         await claimMonetagReward(token);
                         return;
                     } catch (e) {
-                        if (e.message && e.message.includes('rejected')) return;
+                        if (e.message && (e.message.includes('rejected') || e.message.includes('cancelled'))) return;
+                    }
+                } else {
+                    // SDK not loaded yet - wait a bit
+                    for (let i = 0; i < 20; i++) {
+                        await new Promise(r => setTimeout(r, 500));
+                        if (typeof show_11151650 === 'function') {
+                            try {
+                                await show_11151650();
+                                await claimMonetagReward(token);
+                                return;
+                            } catch (e) {
+                                if (e.message && (e.message.includes('rejected') || e.message.includes('cancelled'))) return;
+                            }
+                        }
                     }
                 }
 

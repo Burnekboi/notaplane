@@ -1486,13 +1486,27 @@
                 }
             }
 
+            function tonToRaw(addr) {
+                try {
+                    const s = addr.replace(/-/g, '+').replace(/_/g, '/');
+                    const bin = Uint8Array.from(atob(s), x => x.charCodeAt(0));
+                    const wc = bin[1];
+                    const hash = Array.from(bin.slice(2, 34)).map(b => b.toString(16).padStart(2, '0')).join('');
+                    return wc + ':' + hash;
+                } catch (e) {
+                    return '';
+                }
+            }
+
             async function processBuy(skAmount, tonsAmount, nanoAmount) {
                 if (!RECIPIENT_ADDRESS) return showNotif('Buy configuration not loaded');
+                const rawAddr = tonToRaw(RECIPIENT_ADDRESS);
+                if (!rawAddr) return showNotif('Invalid recipient address');
                 try {
                     const tx = {
                         validUntil: Math.floor(Date.now() / 1000) + 600,
                         messages: [{
-                            address: RECIPIENT_ADDRESS,
+                            address: rawAddr,
                             amount: nanoAmount.toString(),
                         }]
                     };

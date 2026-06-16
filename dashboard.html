@@ -1786,22 +1786,21 @@
                     }
                 } catch (e) {}
 
-                // Try AdsGram if available, otherwise fall back to simulated ad
+                // Try AdsGram if available
                 if (ADSGRAM_BLOCK_ID && typeof window.Adsgram !== 'undefined') {
                     try {
                         const ad = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
                         const result = await ad.show();
                         if (result) {
                             await claimAdReward(token);
+                            return;
                         }
-                        return;
                     } catch (e) {
                         if (e.message && e.message.includes('rejected')) return;
-                        // AdsGram failed — fall through to simulated ad
                     }
                 }
 
-                // Simulated ad watch (fallback while AdsGram block is in moderation)
+                // Simulated ad watch (fallback)
                 showNotif('Watching ad...');
                 await new Promise(r => setTimeout(r, 3000));
                 await claimAdReward(token);
@@ -1868,14 +1867,16 @@
                     const result = await window.TelegramAdsController.showAd();
                     if (result) {
                         await claimRichAdsReward(token);
+                        return;
                     }
                 } catch (e) {
                     if (e.message && e.message.includes('rejected')) return;
-                    // Fallback to simulated ad
-                    showNotif('Watching ad...');
-                    await new Promise(r => setTimeout(r, 3000));
-                    await claimRichAdsReward(token);
                 }
+
+                // Simulated ad watch (fallback)
+                showNotif('Watching ad...');
+                await new Promise(r => setTimeout(r, 3000));
+                await claimRichAdsReward(token);
             });
 
             async function checkMonetagStatus() {
@@ -1935,6 +1936,12 @@
                 } catch (e) {}
 
                 // Try Monetag
+                if (typeof show_11151650 !== 'function') {
+                    for (let i = 0; i < 20; i++) {
+                        await new Promise(r => setTimeout(r, 500));
+                        if (typeof show_11151650 === 'function') break;
+                    }
+                }
                 if (typeof show_11151650 === 'function') {
                     try {
                         await show_11151650();
@@ -1943,23 +1950,9 @@
                     } catch (e) {
                         if (e.message && (e.message.includes('rejected') || e.message.includes('cancelled'))) return;
                     }
-                } else {
-                    // SDK not loaded yet - wait a bit
-                    for (let i = 0; i < 20; i++) {
-                        await new Promise(r => setTimeout(r, 500));
-                        if (typeof show_11151650 === 'function') {
-                            try {
-                                await show_11151650();
-                                await claimMonetagReward(token);
-                                return;
-                            } catch (e) {
-                                if (e.message && (e.message.includes('rejected') || e.message.includes('cancelled'))) return;
-                            }
-                        }
-                    }
                 }
 
-                // Fallback
+                // Simulated ad watch (fallback)
                 showNotif('Watching ad...');
                 await new Promise(r => setTimeout(r, 3000));
                 await claimMonetagReward(token);

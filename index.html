@@ -1517,6 +1517,12 @@
                         pendingRewards.splice(i, 1);
                     }
                 }
+                document.getElementById("balanceDisplay").textContent =
+                    balance >= 1000000
+                        ? (balance / 1000000).toFixed(balance % 1000000 === 0 ? 0 : 1) + 'M'
+                        : balance >= 100000
+                          ? Math.floor(balance / 1000) + 'k'
+                          : balance.toString();
             }
 
             // ── Player Cannon Sprites ─────────────────────────────────────────────────
@@ -6956,6 +6962,8 @@
                 const boxH = 56;
                 const boxX = cw / 2 - boxW / 2;
                 const boxY = 6;
+                const pad = 4;
+                const tierW = (boxW - pad * 4) / 3;
 
                 uiCtx.save();
 
@@ -6968,9 +6976,9 @@
                 uiCtx.textAlign = 'center';
                 uiCtx.textBaseline = 'middle';
                 const tierXs = [
-                    { id: 'mega',  x: boxX + 90 },
-                    { id: 'major', x: boxX + 68 },
-                    { id: 'mini',  x: boxX + 22 },
+                    { id: 'mega',  x: boxX + pad + tierW * 0.5 },
+                    { id: 'major', x: boxX + pad * 2 + tierW + tierW * 0.5 },
+                    { id: 'mini',  x: boxX + pad * 3 + tierW * 2 + tierW * 0.5 },
                 ];
 
                 for (const t of tierXs) {

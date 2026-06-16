@@ -1844,21 +1844,23 @@
                     const token = localStorage.getItem('token');
                     if (!token) return showNotif('Not logged in');
 
-                    fetch(API_BASE + '/api/earn/monetag-reward/status', {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    })
-                    .then(r => r.json())
-                    .then(statusData => {
-                        if (!statusData.can_watch) throw 'claimed';
-                        return loadMonetagSDK();
-                    })
-                    .then(() => show_11151650())
-                    .then(() => claimMonetagReward(token))
-                    .catch(e => {
-                        if (e === 'claimed') return;
-                        showNotif('Watching ad...');
-                        setTimeout(() => claimMonetagReward(token), 3000);
-                    });
+                    (async () => {
+                        try {
+                            const statusRes = await fetch(API_BASE + '/api/earn/monetag-reward/status', {
+                                headers: { 'Authorization': 'Bearer ' + token }
+                            });
+                            const statusData = await statusRes.json();
+                            if (!statusData.can_watch) return;
+
+                            await loadMonetagSDK();
+                            show_11151650().then(() => {
+                                claimMonetagReward(token);
+                            }).catch(() => {
+                                showNotif('Watching ad...');
+                                setTimeout(() => claimMonetagReward(token), 3000);
+                            });
+                        } catch (e) {}
+                    })();
                 });
             });
 

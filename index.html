@@ -6975,10 +6975,11 @@
                 // Values only (labels are baked into the image)
                 uiCtx.textAlign = 'center';
                 uiCtx.textBaseline = 'middle';
+                const megaY = boxY + 33;
                 const tierXs = [
-                    { id: 'mega',  x: boxX + pad + tierW * 0.5 },
-                    { id: 'major', x: boxX + pad * 2 + tierW + tierW * 0.5 },
-                    { id: 'mini',  x: boxX + pad * 3 + tierW * 2 + tierW * 0.5 },
+                    { id: 'major', x: boxX + pad + tierW * 0.5,          y: boxY + 41 },
+                    { id: 'mega',  x: boxX + pad * 2 + tierW + tierW * 0.5, y: megaY },
+                    { id: 'mini',  x: boxX + pad * 3 + tierW * 2 + tierW * 0.5, y: boxY + 41 },
                 ];
 
                 for (const t of tierXs) {
@@ -6992,7 +6993,7 @@
                     uiCtx.fillStyle = '#ffd866';
                     uiCtx.shadowColor = '#000';
                     uiCtx.shadowBlur = 6;
-                    uiCtx.fillText(displayVal, t.x, boxY + 41);
+                    uiCtx.fillText(displayVal, t.x, t.y);
                     uiCtx.shadowBlur = 0;
                 }
 

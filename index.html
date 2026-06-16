@@ -800,6 +800,7 @@
                 "assets/electric ball.png",
                 "assets/explosionC.png",
                 "assets/jackpotbox.png",
+                "assets/jackpottitle.png",
             ];
 
             function startGameAfterPreload() {
@@ -813,8 +814,8 @@
                 // Initialize balance from server (non-blocking)
                 setTimeout(initBalanceFromServer, 100);
                 updateAutoBtnLock();
-                // Jackpot auto-increment: +0.5 to each tier every 100ms
-                setInterval(() => {
+                // Jackpot auto-increment: +0.3 to each tier every 100ms
+                jackpotIncrementInterval = setInterval(() => {
                     jackpotPools.mini += 0.3;
                     jackpotPools.major += 0.3;
                     jackpotPools.mega += 0.3;
@@ -1077,7 +1078,9 @@
             let jackpotPools = { mini: 1000, major: 2500, mega: 10000 };
             let jackpotSynced = false;
             let jackpotAnimation = null; // { tier, prize, startTime } when won
-            let jackpotRoulette = null; // { startTime, selectedId, prize, label, color, awarded }
+            let jackpotState = null; // { phase:'glow'|'roulette', phaseStartTime, selectedId, prize, label, color, awarded }
+            let jackpotIncrementInterval = null; // ref to the 100ms interval so we can stop it
+            const jackpotTitleImg = new Image();
 
             function contributeToJackpot(betAmt) {
                 const contribution = Math.round(betAmt * 0.02);
@@ -1097,9 +1100,9 @@
                 }
             }
 
-            // 1% base chance on enemy kill → start jackpot roulette
+            // 1% base chance on enemy kill → starts jackpot sequence (glow → roulette → award)
             function tryTriggerJackpot() {
-                if (jackpotRoulette) return;
+                if (jackpotState) return;
                 if (Math.random() < 0.01) {
                     // Weighted tier selection: Mega 5%, Major 15%, Mini 80%
                     const roll = Math.random();
@@ -1109,9 +1112,17 @@
                     else selectedId = 'mini';
                     const tier = JACKPOT_TIERS.find(t => t.id === selectedId);
                     const prize = jackpotPools[selectedId];
-                    jackpotRoulette = {
-                        startTime: performance.now(),
-                        duration: 5000,
+                    // Stop incrementing
+                    if (jackpotIncrementInterval) {
+                        clearInterval(jackpotIncrementInterval);
+                        jackpotIncrementInterval = null;
+                    }
+                    // Start GLOW phase (2s) → then roulette (5s)
+                    jackpotState = {
+                        phase: 'glow',
+                        phaseStartTime: performance.now(),
+                        glowDuration: 2000,
+                        rouletteDuration: 5000,
                         selectedId,
                         prize,
                         label: tier.label,
@@ -1121,39 +1132,50 @@
                 }
             }
 
-            // Called every frame from update() — awards the prize when roulette ends
-            function updateJackpotRoulette() {
-                if (!jackpotRoulette || jackpotRoulette.awarded) return;
+            // Called every frame from update() — advances the jackpot state machine
+            function updateJackpotState() {
+                if (!jackpotState || jackpotState.awarded) return;
                 const now = performance.now();
-                const elapsed = now - jackpotRoulette.startTime;
-                if (elapsed < 5000) return;
-                jackpotRoulette.awarded = true;
-                const tier = JACKPOT_TIERS.find(t => t.id === jackpotRoulette.selectedId);
-                const prize = jackpotPools[tier.id];
-                const baseReseed = tier.reseed * betAmount;
-                if (prize > baseReseed) {
-                    jackpotPools[tier.id] = baseReseed;
-                    balance += prize;
-                    pushPopup(prize.toFixed(1), 'JACKPOT ' + jackpotRoulette.label);
-                    jackpotAnimation = {
-                        tier: tier.id,
-                        prize,
-                        label: jackpotRoulette.label,
-                        color: jackpotRoulette.color,
-                        startTime: now
-                    };
+                const elapsed = now - jackpotState.phaseStartTime;
+
+                if (jackpotState.phase === 'glow') {
+                    if (elapsed >= jackpotState.glowDuration) {
+                        // Transition to roulette
+                        jackpotState.phase = 'roulette';
+                        jackpotState.phaseStartTime = now;
+                    }
+                } else if (jackpotState.phase === 'roulette') {
+                    if (elapsed >= jackpotState.rouletteDuration) {
+                        // Award prize
+                        jackpotState.awarded = true;
+                        const tier = JACKPOT_TIERS.find(t => t.id === jackpotState.selectedId);
+                        const prize = jackpotPools[tier.id];
+                        const baseReseed = tier.reseed * betAmount;
+                        if (prize > baseReseed) {
+                            jackpotPools[tier.id] = baseReseed;
+                            balance += prize;
+                            pushPopup(prize.toFixed(1), 'JACKPOT ' + jackpotState.label);
+                            jackpotAnimation = {
+                                tier: tier.id,
+                                prize,
+                                label: jackpotState.label,
+                                color: jackpotState.color,
+                                startTime: now
+                            };
+                        }
+                        if (authToken) {
+                            fetch(API_BASE + '/api/game/jackpot/claim', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                                body: JSON.stringify({ tier: tier.id }),
+                            }).then(r => r.json()).then(data => {
+                                if (data.pools) jackpotPools = data.pools;
+                                if (data.sk_balance !== undefined) balance = data.sk_balance;
+                            }).catch(() => {});
+                        }
+                        jackpotState = null;
+                    }
                 }
-                if (authToken) {
-                    fetch(API_BASE + '/api/game/jackpot/claim', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-                        body: JSON.stringify({ tier: tier.id }),
-                    }).then(r => r.json()).then(data => {
-                        if (data.pools) jackpotPools = data.pools;
-                        if (data.sk_balance !== undefined) balance = data.sk_balance;
-                    }).catch(() => {});
-                }
-                jackpotRoulette = null;
             }
 
             function pushPopup(text, subText) {
@@ -1485,6 +1507,8 @@
 
             const jackpotBoxImg = new Image();
             jackpotBoxImg.src = "assets/jackpotbox.png";
+
+            jackpotTitleImg.src = "assets/jackpottitle.png";
 
             const INTRO_DURATION = 5000;
             const INTRO_FADE_DURATION = 1500;
@@ -2594,9 +2618,15 @@
                 } else if (relX > 2 * rect.width / 3) {
                     if (betIndex < BET_VALUES.length - 1) betIndex++;
                 }
+                const oldBet = betAmount;
                 betAmount = BET_VALUES[betIndex];
                 betDisplay.textContent = betAmount.toString();
                 updateStrikeCosts();
+                // Scale jackpot pools to match new bet level
+                const betRatio = betAmount / oldBet;
+                jackpotPools.mini *= betRatio;
+                jackpotPools.major *= betRatio;
+                jackpotPools.mega *= betRatio;
             });
 
             // ── Input ─────────────────────────────────────────────────────────────────
@@ -5612,7 +5642,7 @@
 
             function update(ts) {
                 flushPendingRewards();
-                updateJackpotRoulette();
+                updateJackpotState();
 
                 for (let i = activeTitles.length - 1; i >= 0; i--) {
                     const t = activeTitles[i];
@@ -7036,13 +7066,28 @@
                     uiCtx.shadowBlur = 0;
                 }
 
-                // ── Jackpot roulette highlight cycling ────────────────────────────
-                if (jackpotRoulette && !jackpotRoulette.awarded) {
+                // ── Jackpot glow (2s before roulette) ────────────────────────────
+                if (jackpotState && jackpotState.phase === 'glow') {
                     const now = performance.now();
-                    const elapsed = now - jackpotRoulette.startTime;
-                    const progress = Math.min(1, elapsed / 5000);
+                    const elapsed = now - jackpotState.phaseStartTime;
+                    const intensity = 0.5 + 0.5 * Math.sin(elapsed * 0.008);
+                    uiCtx.save();
+                    uiCtx.shadowColor = jackpotState.color;
+                    uiCtx.shadowBlur = 40 * intensity;
+                    uiCtx.strokeStyle = jackpotState.color;
+                    uiCtx.lineWidth = 3;
+                    uiCtx.globalAlpha = 0.6 + 0.4 * intensity;
+                    uiCtx.strokeRect(boxX - 4, boxY - 4, boxW + 8, boxH + 8);
+                    uiCtx.restore();
+                }
+
+                // ── Jackpot roulette highlight cycling (after glow) ──────────────
+                if (jackpotState && jackpotState.phase === 'roulette' && !jackpotState.awarded) {
+                    const now = performance.now();
+                    const elapsed = now - jackpotState.phaseStartTime;
+                    const progress = Math.min(1, elapsed / jackpotState.rouletteDuration);
                     const tierOrder = ['major', 'mega', 'mini'];
-                    const targetIdx = tierOrder.indexOf(jackpotRoulette.selectedId);
+                    const targetIdx = tierOrder.indexOf(jackpotState.selectedId);
 
                     let highlightIdx;
                     if (progress < 0.85) {
@@ -9725,6 +9770,17 @@
                         const titleY = player.y - baseSize / 2 - th - gap;
                         ctx.drawImage(img, titleX, titleY, tw, th);
                     }
+                }
+
+                // ── Jackpot Title Image (during jackpot sequence) ──────────────────
+                if (jackpotState && !jackpotState.awarded && jackpotTitleImg.complete && jackpotTitleImg.naturalWidth > 0) {
+                    const jpScale = 2;
+                    const jpTh = TITLE_BASE_H * jpScale;
+                    const jpTw = jpTh * (jackpotTitleImg.naturalWidth / jackpotTitleImg.naturalHeight);
+                    const jpGap = -30;
+                    const jpTitleX = player.x - jpTw / 2;
+                    const jpTitleY = player.y - baseSize / 2 - jpTh - jpGap;
+                    ctx.drawImage(jackpotTitleImg, jpTitleX, jpTitleY, jpTw, jpTh);
                 }
 
                 // ── Player: Barrel (rotates toward mouse) ────────────────────────────────

@@ -372,13 +372,49 @@
                     </div>
                 </div>
                 <div class="earnTask" id="earnAd">
-                    <div class="earnInfo">
-                        <span class="earnName">Watch Ad 1</span>
-                        <span class="earnDesc" id="adDesc">Watch a short ad to earn rewards</span>
-                    </div>
-                    <div class="earnRight">
-                        <div class="earnReward">+500 <span class="earnToken">SK</span></div>
-                        <div class="earnCount" id="adStatus">Available</div>
+                    <adsgram-task
+                        id="adsgramAd1"
+                        data-block-id="33299"
+                        data-debug="true"
+                        data-debug-console="false"
+                        style="width:100%;"
+                    >
+                        <div slot="reward" class="earnRight">
+                            <div class="earnReward">+500 <span class="earnToken">SK</span></div>
+                        </div>
+                        <div slot="button" style="display:flex;align-items:center;gap:14px;flex:1;">
+                            <div class="earnInfo">
+                                <span class="earnName">Watch Ad 1</span>
+                                <span class="earnDesc">Watch a short ad to earn rewards</span>
+                            </div>
+                            <div class="earnRight">
+                                <div class="earnCount" style="color:#5dff5d;">Available</div>
+                            </div>
+                        </div>
+                        <div slot="claim" style="display:flex;align-items:center;gap:14px;flex:1;">
+                            <div class="earnInfo">
+                                <span class="earnName">Watch Ad 1</span>
+                                <span class="earnDesc">Tap to claim!</span>
+                            </div>
+                        </div>
+                        <div slot="done" style="display:flex;align-items:center;gap:14px;flex:1;">
+                            <div class="earnInfo">
+                                <span class="earnName">Watch Ad 1</span>
+                                <span class="earnDesc">Come back tomorrow</span>
+                            </div>
+                            <div class="earnRight">
+                                <div class="earnCount" style="color:rgba(255,216,102,0.4);">Claimed</div>
+                            </div>
+                        </div>
+                    </adsgram-task>
+                    <div id="earnAdClaimed" style="display:none;align-items:center;gap:14px;flex:1;width:100%;">
+                        <div class="earnInfo">
+                            <span class="earnName">Watch Ad 1</span>
+                            <span class="earnDesc" id="adDesc">Come back tomorrow</span>
+                        </div>
+                        <div class="earnRight">
+                            <div class="earnCount" id="adStatus">Claimed</div>
+                        </div>
                     </div>
                 </div>
                 <div class="earnTask" id="earnRichAds">
@@ -661,6 +697,33 @@
             }
             .earnTask:active {
                 transform: scale(0.98);
+            }
+            #earnAd {
+                padding: 0;
+                border: none;
+                background: none;
+                cursor: default;
+            }
+            #earnAd:hover {
+                background: none;
+                border-color: transparent;
+            }
+            #adsgramAd1 {
+                --adsgram-task-font-size: 15px;
+                --adsgram-task-icon-size: 32px;
+                --adsgram-task-icon-title-gap: 10px;
+                --adsgram-task-icon-border-radius: 6px;
+                --adsgram-task-button-width: 80px;
+                background: rgba(255,200,100,0.05);
+                border: 1px solid rgba(255,200,100,0.12);
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 0;
+                transition: all 0.2s;
+            }
+            #adsgramAd1:hover {
+                background: rgba(255,200,100,0.1);
+                border-color: rgba(255,200,100,0.3);
             }
             .earnInfo {
                 flex: 1;
@@ -1739,13 +1802,19 @@
                     });
                     if (!res.ok) return;
                     const data = await res.json();
-                    const statusEl = document.getElementById('adStatus');
+                    const taskEl = document.getElementById('adsgramAd1');
+                    const claimedEl = document.getElementById('earnAdClaimed');
                     if (data.can_watch) {
-                        statusEl.textContent = 'Available';
-                        statusEl.style.color = '#5dff5d';
+                        if (taskEl) taskEl.style.display = '';
+                        if (claimedEl) claimedEl.style.display = 'none';
                     } else {
-                        statusEl.textContent = 'Claimed';
-                        statusEl.style.color = 'rgba(255,216,102,0.4)';
+                        if (taskEl) taskEl.style.display = 'none';
+                        if (claimedEl) {
+                            claimedEl.style.display = 'flex';
+                            document.getElementById('adStatus').textContent = 'Claimed';
+                            document.getElementById('adStatus').style.color = 'rgba(255,216,102,0.4)';
+                            document.getElementById('adDesc').textContent = 'Come back tomorrow';
+                        }
                     }
                 } catch (e) {}
             }
@@ -1772,39 +1841,18 @@
                 checkAdStatus();
             }
 
-            document.getElementById('earnAd').addEventListener('click', async () => {
-                const token = localStorage.getItem('token');
-                if (!token) return showNotif('Not logged in');
-
-                try {
-                    const statusRes = await fetch(API_BASE + '/api/earn/ad-reward/status', {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    });
-                    const statusData = await statusRes.json();
-                    if (!statusData.can_watch) {
-                        return showNotif('Come back tomorrow');
-                    }
-                } catch (e) {}
-
-                // Try AdsGram if available
-                if (ADSGRAM_BLOCK_ID && typeof window.Adsgram !== 'undefined') {
-                    try {
-                        const ad = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
-                        const result = await ad.show();
-                        if (result) {
-                            await claimAdReward(token);
-                            return;
-                        }
-                    } catch (e) {
-                        if (e.message && e.message.includes('rejected')) return;
-                    }
-                }
-
-                // Simulated ad watch (fallback)
-                showNotif('Watching ad...');
-                await new Promise(r => setTimeout(r, 3000));
-                await claimAdReward(token);
-            });
+            // AdsGram web component event handling
+            const adsgramAd1 = document.getElementById('adsgramAd1');
+            if (adsgramAd1) {
+                adsgramAd1.addEventListener('reward', async (event) => {
+                    const token = localStorage.getItem('token');
+                    if (!token) return;
+                    await claimAdReward(token);
+                });
+                adsgramAd1.addEventListener('onError', (event) => {
+                    console.warn('AdsGram error:', event.detail);
+                });
+            }
 
             async function checkRichAdsStatus() {
                 const token = localStorage.getItem('token');

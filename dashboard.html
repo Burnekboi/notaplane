@@ -1436,6 +1436,8 @@
                 checkCommunityStatus();
                 checkWalletStatus();
                 checkAdStatus();
+                checkRichAdsStatus();
+                checkMonetagStatus();
             });
 
             document.getElementById('earnClose').addEventListener('click', () => {
@@ -1780,7 +1782,7 @@
                     });
                     const statusData = await statusRes.json();
                     if (!statusData.can_watch) {
-                        return showNotif('Come back in 24 hours');
+                        return showNotif('Come back tomorrow');
                     }
                 } catch (e) {}
 
@@ -1857,7 +1859,7 @@
                     });
                     const statusData = await statusRes.json();
                     if (!statusData.can_watch) {
-                        return showNotif('Come back in 24 hours');
+                        return showNotif('Come back tomorrow');
                     }
                 } catch (e) {}
 
@@ -1928,7 +1930,7 @@
                     });
                     const statusData = await statusRes.json();
                     if (!statusData.can_watch) {
-                        return showNotif('Come back in 24 hours');
+                        return showNotif('Come back tomorrow');
                     }
                 } catch (e) {}
 

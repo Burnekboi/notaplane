@@ -253,16 +253,15 @@ router.get('/wallet-connect/status', async (req, res) => {
 });
 
 const AD_REWARD = 500;
-const AD_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 router.post('/ad-reward', async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const now = Date.now();
+    const utcMidnight = getUTCMidnight();
     const lastAd = user.last_ad_watch ? new Date(user.last_ad_watch).getTime() : 0;
-    if (now - lastAd < AD_COOLDOWN_MS) {
+    if (lastAd >= utcMidnight) {
       return res.status(400).json({ error: 'Already claimed today' });
     }
 
@@ -296,10 +295,11 @@ router.get('/ad-reward/status', async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const now = Date.now();
+    const utcMidnight = getUTCMidnight();
     const lastAd = user.last_ad_watch ? new Date(user.last_ad_watch).getTime() : 0;
-    const canWatch = now - lastAd >= AD_COOLDOWN_MS;
-    const cooldownRemaining = Math.max(0, AD_COOLDOWN_MS - (now - lastAd));
+    const canWatch = lastAd < utcMidnight;
+    const nextMidnight = utcMidnight + 86400000;
+    const cooldownRemaining = Math.max(0, nextMidnight - Date.now());
 
     res.json({
       can_watch: canWatch,
@@ -312,16 +312,15 @@ router.get('/ad-reward/status', async (req, res) => {
 });
 
 const RICHADS_REWARD = 500;
-const RICHADS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 router.post('/richads-reward', async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const now = Date.now();
+    const utcMidnight = getUTCMidnight();
     const lastAd = user.last_richads_watch ? new Date(user.last_richads_watch).getTime() : 0;
-    if (now - lastAd < RICHADS_COOLDOWN_MS) {
+    if (lastAd >= utcMidnight) {
       return res.status(400).json({ error: 'Already claimed today' });
     }
 
@@ -355,10 +354,11 @@ router.get('/richads-reward/status', async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const now = Date.now();
+    const utcMidnight = getUTCMidnight();
     const lastAd = user.last_richads_watch ? new Date(user.last_richads_watch).getTime() : 0;
-    const canWatch = now - lastAd >= RICHADS_COOLDOWN_MS;
-    const cooldownRemaining = Math.max(0, RICHADS_COOLDOWN_MS - (now - lastAd));
+    const canWatch = lastAd < utcMidnight;
+    const nextMidnight = utcMidnight + 86400000;
+    const cooldownRemaining = Math.max(0, nextMidnight - Date.now());
 
     res.json({
       can_watch: canWatch,
@@ -371,16 +371,15 @@ router.get('/richads-reward/status', async (req, res) => {
 });
 
 const MONETAG_REWARD = 500;
-const MONETAG_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 router.post('/monetag-reward', async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const now = Date.now();
+    const utcMidnight = getUTCMidnight();
     const lastAd = user.last_monetag_watch ? new Date(user.last_monetag_watch).getTime() : 0;
-    if (now - lastAd < MONETAG_COOLDOWN_MS) {
+    if (lastAd >= utcMidnight) {
       return res.status(400).json({ error: 'Already claimed today' });
     }
 
@@ -414,10 +413,11 @@ router.get('/monetag-reward/status', async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const now = Date.now();
+    const utcMidnight = getUTCMidnight();
     const lastAd = user.last_monetag_watch ? new Date(user.last_monetag_watch).getTime() : 0;
-    const canWatch = now - lastAd >= MONETAG_COOLDOWN_MS;
-    const cooldownRemaining = Math.max(0, MONETAG_COOLDOWN_MS - (now - lastAd));
+    const canWatch = lastAd < utcMidnight;
+    const nextMidnight = utcMidnight + 86400000;
+    const cooldownRemaining = Math.max(0, nextMidnight - Date.now());
 
     res.json({
       can_watch: canWatch,

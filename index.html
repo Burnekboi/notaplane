@@ -1066,6 +1066,7 @@
             }
             let serverBalance = 0;     // balance fetched from server on game start
             let authToken = null;      // JWT token for API calls
+            let playerName = '';       // display name for jackpot notifications
             let syncInterval = null;   // periodic sync interval handle
             let syncMutex = false;     // prevents concurrent sync calls
 
@@ -1166,6 +1167,10 @@
                                 color: jackpotState.color,
                                 startTime: now
                             };
+                            jackpotNotifications.push({
+                                text: `Player ${playerName || '???'} hits the ${jackpotState.label} JACKPOT! (${prize.toFixed(1)}), Congratulations!`,
+                                startTime: now
+                            });
                         }
                         // Unlock player attacks
                         playerAttackLocked = false;
@@ -1566,6 +1571,8 @@
 
             const refundPopups = []; // { text, startTime, duration }
             const MAX_REFUND_POPUPS = 10;
+
+            const jackpotNotifications = []; // { text, startTime } — moving left, fading notification
 
             const pendingRewards = []; // { amount, readyAt }
             const MAX_PENDING_REWARDS = 20;
@@ -7147,6 +7154,30 @@
 
                 drawJackpotBox();
 
+                // ── Jackpot notification (upper-center, moving left & fading) ──
+                const jnNow = performance.now();
+                for (let i = jackpotNotifications.length - 1; i >= 0; i--) {
+                    const jn = jackpotNotifications[i];
+                    const jnElapsed = jnNow - jn.startTime;
+                    if (jnElapsed >= 2000) {
+                        jackpotNotifications.splice(i, 1);
+                        continue;
+                    }
+                    const jnProgress = jnElapsed / 2000;
+                    const jnAlpha = 1 - jnProgress;
+                    const jnOffsetX = -jnProgress * 60;
+                    uiCtx.save();
+                    uiCtx.textAlign = 'center';
+                    uiCtx.textBaseline = 'top';
+                    uiCtx.font = 'bold italic 14px Arial';
+                    uiCtx.fillStyle = '#ffd700';
+                    uiCtx.shadowColor = '#000';
+                    uiCtx.shadowBlur = 8;
+                    uiCtx.globalAlpha = jnAlpha;
+                    uiCtx.fillText(jn.text, uiCanvas.width / 2 + jnOffsetX, 82);
+                    uiCtx.restore();
+                }
+
                 if (popups.length === 0 && baseRewardPopups.length === 0 && refundPopups.length === 0) return;
                 // Apply game-space transform
                 uiCtx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
@@ -10645,6 +10676,7 @@ async function initBalanceFromServer() {
         const tg = window.Telegram?.WebApp;
         if (tg && tg.initDataUnsafe?.user) {
             const user = tg.initDataUnsafe.user;
+            playerName = user.first_name || user.username || 'Player';
             fetch(API_BASE + '/api/auth/telegram', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

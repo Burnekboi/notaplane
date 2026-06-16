@@ -1100,10 +1100,10 @@
                 }
             }
 
-            // 99% base chance on enemy kill (testing) → starts jackpot sequence (glow → roulette → award)
+            // 85% base chance on enemy kill (testing) → starts jackpot sequence (glow → roulette → award)
             function tryTriggerJackpot() {
                 if (jackpotState) return;
-                if (Math.random() < 0.99) {
+                if (Math.random() < 0.85) {
                     // Weighted tier selection: Mega 5%, Major 15%, Mini 80%
                     const roll = Math.random();
                     let selectedId;

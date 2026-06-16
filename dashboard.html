@@ -5,15 +5,7 @@
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         <script src="tonconnect-ui.min.js"></script>
         <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
-        <script>
-            (function() {
-                var s = document.createElement('script');
-                s.src = 'https://libtl.com/sdk.js';
-                s.setAttribute('data-zone', '11151650');
-                s.setAttribute('data-sdk', 'show_11151650');
-                document.head.appendChild(s);
-            })();
-        </script>
+        <script src="https://libtl.com/sdk.js" data-zone="11151650" data-sdk="show_11151650"></script>
         <script>
             window.TelegramAdsController = new TelegramAdsController();
             window.TelegramAdsController.initialize({
@@ -1833,41 +1825,24 @@
                 checkMonetagStatus();
             }
 
-            document.getElementById('earnMonetag').addEventListener('click', async () => {
+            document.getElementById('earnMonetag').addEventListener('click', () => {
                 const token = localStorage.getItem('token');
                 if (!token) return showNotif('Not logged in');
 
-                try {
-                    const statusRes = await fetch(API_BASE + '/api/earn/monetag-reward/status', {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    });
-                    const statusData = await statusRes.json();
-                    if (!statusData.can_watch) {
-                        return showNotif('Come back tomorrow');
-                    }
-                } catch (e) {}
-
-                // Try Monetag
-                if (typeof show_11151650 !== 'function') {
-                    for (let i = 0; i < 20; i++) {
-                        await new Promise(r => setTimeout(r, 500));
-                        if (typeof show_11151650 === 'function') break;
-                    }
-                }
-                if (typeof show_11151650 === 'function') {
-                    try {
-                        await show_11151650();
-                        await claimMonetagReward(token);
-                        return;
-                    } catch (e) {
-                        if (e.message && (e.message.includes('rejected') || e.message.includes('cancelled'))) return;
-                    }
-                }
-
-                // Simulated ad watch (fallback)
-                showNotif('Watching ad...');
-                await new Promise(r => setTimeout(r, 3000));
-                await claimMonetagReward(token);
+                fetch(API_BASE + '/api/earn/monetag-reward/status', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(r => r.json())
+                .then(statusData => {
+                    if (!statusData.can_watch) throw 'claimed';
+                    return show_11151650();
+                })
+                .then(() => claimMonetagReward(token))
+                .catch(e => {
+                    if (e === 'claimed') return;
+                    showNotif('Watching ad...');
+                    setTimeout(() => claimMonetagReward(token), 3000);
+                });
             });
 
             document.getElementById('swapBtn').addEventListener('click', () => {

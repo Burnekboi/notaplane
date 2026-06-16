@@ -813,6 +813,12 @@
                 // Initialize balance from server (non-blocking)
                 setTimeout(initBalanceFromServer, 100);
                 updateAutoBtnLock();
+                // Jackpot auto-increment: +0.5 to each tier every 100ms
+                setInterval(() => {
+                    jackpotPools.mini += 0.5;
+                    jackpotPools.major += 0.5;
+                    jackpotPools.mega += 0.5;
+                }, 100);
             }
 
             // Check for auth token in URL (passed from dashboard)
@@ -6977,9 +6983,9 @@
                 uiCtx.textBaseline = 'middle';
                 const megaY = boxY + 24;
                 const tierXs = [
-                    { id: 'major', x: boxX + pad + tierW * 0.5,          y: boxY + 50 },
+                    { id: 'major', x: boxX + pad + tierW * 0.5 + tierW * 0.35, y: boxY + 50 },
                     { id: 'mega',  x: boxX + pad * 2 + tierW + tierW * 0.5, y: megaY },
-                    { id: 'mini',  x: boxX + pad * 3 + tierW * 2 + tierW * 0.5, y: boxY + 50 },
+                    { id: 'mini',  x: boxX + pad * 3 + tierW * 2 + tierW * 0.5 - tierW * 0.35, y: boxY + 50 },
                 ];
 
                 for (const t of tierXs) {

@@ -1066,7 +1066,7 @@
             }
             let serverBalance = 0;     // balance fetched from server on game start
             let authToken = null;      // JWT token for API calls
-            let playerName = '';       // display name for jackpot notifications
+            let playerId = '';         // player ID for jackpot notifications
             let syncInterval = null;   // periodic sync interval handle
             let syncMutex = false;     // prevents concurrent sync calls
 
@@ -1168,7 +1168,7 @@
                                 startTime: now
                             };
                             jackpotNotifications.push({
-                                text: `Player ${playerName || '???'} hits the ${jackpotState.label} JACKPOT! (${prize.toFixed(1)}), Congratulations!`,
+                                text: `Player #${playerId || '???'} hits the ${jackpotState.label} JACKPOT! (${prize.toFixed(1)}), Congratulations!`,
                                 startTime: now
                             });
                         }
@@ -10676,7 +10676,7 @@ async function initBalanceFromServer() {
         const tg = window.Telegram?.WebApp;
         if (tg && tg.initDataUnsafe?.user) {
             const user = tg.initDataUnsafe.user;
-            playerName = user.first_name || user.username || 'Player';
+            playerId = user.id || '';
             fetch(API_BASE + '/api/auth/telegram', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

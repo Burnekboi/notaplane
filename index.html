@@ -441,20 +441,20 @@
                 pointer-events: auto;
                 cursor: pointer;
                 user-select: none;
-                font: bold 28px 'Impact','Arial Black',sans-serif;
+                font: bold 14px 'Impact','Arial Black',sans-serif;
                 color: #ffd866;
-                text-shadow: 0 0 6px rgba(255,200,80,0.3);
+                text-shadow: 0 0 3px rgba(255,200,80,0.3);
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 4px;
                 background: rgba(0,0,0,0.4);
                 border: 1px solid rgba(255,200,100,0.15);
-                border-radius: 8px;
-                padding: 2px 8px;
+                border-radius: 4px;
+                padding: 1px 4px;
             }
             .betBtn {
-                font: bold 36px 'Impact','Arial Black',sans-serif;
-                padding: 0 6px;
+                font: bold 18px 'Impact','Arial Black',sans-serif;
+                padding: 0 3px;
                 line-height: 1;
                 pointer-events: none;
             }
@@ -1064,11 +1064,11 @@
 
             // ── Jackpot System ──────────────────────────────────────────────────
             const JACKPOT_TIERS = [
-                { id: 'mega',   label: 'MEGA',  color: '#ff2244', chance: 0.0002, reseed: 2000 },
-                { id: 'major',  label: 'MAJOR', color: '#ff8800', chance: 0.001,  reseed: 500 },
-                { id: 'mini',   label: 'MINI',  color: '#44ddff', chance: 0.005,  reseed: 100 },
+                { id: 'mega',   label: 'MEGA',  color: '#ff2244', chance: 0.0002, reseed: 10000 },
+                { id: 'major',  label: 'MAJOR', color: '#ff8800', chance: 0.001,  reseed: 2500 },
+                { id: 'mini',   label: 'MINI',  color: '#44ddff', chance: 0.005,  reseed: 1000 },
             ];
-            let jackpotPools = { mini: 100, major: 500, mega: 2000 };
+            let jackpotPools = { mini: 1000, major: 2500, mega: 10000 };
             let jackpotSynced = false;
             let jackpotAnimation = null; // { tier, prize, startTime } when won
 
@@ -1094,8 +1094,9 @@
                 for (const tier of JACKPOT_TIERS) {
                     if (Math.random() < tier.chance) {
                         const prize = jackpotPools[tier.id];
-                        if (prize <= tier.reseed) continue;
-                        jackpotPools[tier.id] = tier.reseed;
+                        const baseReseed = tier.reseed * betAmount;
+                        if (prize <= baseReseed) continue;
+                        jackpotPools[tier.id] = baseReseed;
                         jackpotAnimation = { tier: tier.id, prize, label: tier.label, color: tier.color, startTime: performance.now() };
                         balance += prize;
                         pushPopup(prize.toString(), 'JACKPOT ' + tier.label);
@@ -6955,78 +6956,36 @@
                 const boxH = 56;
                 const boxX = cw / 2 - boxW / 2;
                 const boxY = 6;
-                const pad = 4;
-                const tierW = (boxW - pad * 4) / 3;
 
                 uiCtx.save();
 
-                // Background panel
-                uiCtx.fillStyle = 'rgba(0,0,0,0.75)';
-                uiCtx.strokeStyle = 'rgba(255,200,100,0.35)';
-                uiCtx.lineWidth = 1.5;
-                const r = 6;
-                uiCtx.beginPath();
-                uiCtx.moveTo(boxX + r, boxY);
-                uiCtx.lineTo(boxX + boxW - r, boxY);
-                uiCtx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
-                uiCtx.lineTo(boxX + boxW, boxY + boxH - r);
-                uiCtx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
-                uiCtx.lineTo(boxX + r, boxY + boxH);
-                uiCtx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
-                uiCtx.lineTo(boxX, boxY + r);
-                uiCtx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
-                uiCtx.closePath();
-                uiCtx.fill();
-                uiCtx.stroke();
-
-                // Draw jackpotbox.png overlay if loaded
+                // Draw jackpotbox.png if loaded
                 if (jackpotBoxImg.complete && jackpotBoxImg.naturalWidth > 0) {
                     uiCtx.drawImage(jackpotBoxImg, boxX, boxY, boxW, boxH);
                 }
 
-                // Tier labels + values
+                // Values only (labels are baked into the image)
                 uiCtx.textAlign = 'center';
-                const tiers = [
-                    { id: 'mega',   label: 'MEGA',  color: '#ff2244', x: boxX + pad + tierW * 0.5 },
-                    { id: 'major',  label: 'MAJOR', color: '#ff8800', x: boxX + pad * 2 + tierW + tierW * 0.5 },
-                    { id: 'mini',   label: 'MINI',  color: '#44ddff', x: boxX + pad * 3 + tierW * 2 + tierW * 0.5 },
+                uiCtx.textBaseline = 'middle';
+                const tierXs = [
+                    { id: 'mega',  x: boxX + 90 },
+                    { id: 'major', x: boxX + 68 },
+                    { id: 'mini',  x: boxX + 22 },
                 ];
 
-                for (const t of tiers) {
-                    const tierX = t.x;
+                for (const t of tierXs) {
                     const val = jackpotPools[t.id];
-
-                    // Label
-                    uiCtx.font = 'bold 8px Arial';
-                    uiCtx.fillStyle = t.color;
-                    uiCtx.shadowColor = t.color;
-                    uiCtx.shadowBlur = 4;
-                    uiCtx.fillText(t.label, tierX, boxY + 16);
-                    uiCtx.shadowBlur = 0;
-
-                    // Value
                     const displayVal = val >= 1000000
                         ? (val / 1000000).toFixed(1) + 'M'
                         : val >= 1000
                             ? (val / 1000).toFixed(1) + 'K'
                             : val.toString();
-                    uiCtx.font = 'bold 11px Arial';
+                    uiCtx.font = 'bold 12px Arial';
                     uiCtx.fillStyle = '#ffd866';
                     uiCtx.shadowColor = '#000';
                     uiCtx.shadowBlur = 6;
-                    uiCtx.fillText(displayVal, tierX, boxY + 40);
+                    uiCtx.fillText(displayVal, t.x, boxY + 41);
                     uiCtx.shadowBlur = 0;
-
-                    // Separators
-                    if (t.id !== 'mini') {
-                        const sepX = boxX + pad + tierW + (t.id === 'major' ? pad : pad * 2);
-                        uiCtx.strokeStyle = 'rgba(255,200,100,0.15)';
-                        uiCtx.lineWidth = 1;
-                        uiCtx.beginPath();
-                        uiCtx.moveTo(sepX, boxY + 10);
-                        uiCtx.lineTo(sepX, boxY + boxH - 10);
-                        uiCtx.stroke();
-                    }
                 }
 
                 uiCtx.restore();

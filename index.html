@@ -1100,10 +1100,10 @@
                 }
             }
 
-            // 1% base chance on enemy kill → starts jackpot sequence (glow → roulette → award)
+            // 99% base chance on enemy kill (testing) → starts jackpot sequence (glow → roulette → award)
             function tryTriggerJackpot() {
                 if (jackpotState) return;
-                if (Math.random() < 0.01) {
+                if (Math.random() < 0.99) {
                     // Weighted tier selection: Mega 5%, Major 15%, Mini 80%
                     const roll = Math.random();
                     let selectedId;
@@ -6390,12 +6390,12 @@
                                         !!autoTarget.isBoss,
                                     );
 
-                                    // Auto-aim: 0.005% base instant-kill, 2% base crit, 2.7 base damage
+                            // Auto-aim: 50% base instant-kill, 2% base crit, 2.7 base damage
 
-                                    const autoInstant =
-                                        rng.next() <
-                                        0.00005 +
-                                            (critState.isActive() ? 0.01 : 0);
+                            const autoInstant =
+                                rng.next() <
+                                0.5 +
+                                    (critState.isActive() ? 0.01 : 0);
 
                                     const autoCrit =
                                         !autoInstant &&
@@ -6912,11 +6912,11 @@
 
                             const roll = rtp.rollHit(e.tierIndex, !!e.isBoss);
 
-                            // Manual bullet: 0.005% base instant-kill, 2.5% base crit, 2.5 base damage
+                            // Manual bullet: 50% base instant-kill, 2.5% base crit, 2.5 base damage
 
                             const bulletInstant =
                                 rng.next() <
-                                0.00005 +
+                                0.5 +
                                     (critState.isActive() ? 0.01 : 0);
 
                             const bulletCrit =

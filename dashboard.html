@@ -5,7 +5,6 @@
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         <script src="tonconnect-ui.min.js"></script>
         <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
-        <script src="https://libtl.com/sdk.js" data-zone="11151650" data-sdk="show_11151650"></script>
         <script>
             window.TelegramAdsController = new TelegramAdsController();
             window.TelegramAdsController.initialize({
@@ -634,6 +633,7 @@
                 padding: 14px 16px;
                 margin-bottom: 10px;
                 cursor: pointer;
+                touch-action: manipulation;
                 transition: all 0.2s;
             }
             .earnTask:hover {
@@ -1825,23 +1825,40 @@
                 checkMonetagStatus();
             }
 
-            document.getElementById('earnMonetag').addEventListener('click', () => {
-                const token = localStorage.getItem('token');
-                if (!token) return showNotif('Not logged in');
+            function loadMonetagSDK() {
+                return new Promise((resolve) => {
+                    if (typeof show_11151650 === 'function') return resolve();
+                    const s = document.createElement('script');
+                    s.src = 'https://libtl.com/sdk.js';
+                    s.setAttribute('data-zone', '11151650');
+                    s.setAttribute('data-sdk', 'show_11151650');
+                    s.onload = () => setTimeout(resolve, 300);
+                    s.onerror = resolve;
+                    document.head.appendChild(s);
+                });
+            }
 
-                fetch(API_BASE + '/api/earn/monetag-reward/status', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                })
-                .then(r => r.json())
-                .then(statusData => {
-                    if (!statusData.can_watch) throw 'claimed';
-                    return show_11151650();
-                })
-                .then(() => claimMonetagReward(token))
-                .catch(e => {
-                    if (e === 'claimed') return;
-                    showNotif('Watching ad...');
-                    setTimeout(() => claimMonetagReward(token), 3000);
+            ['click', 'touchend'].forEach(evt => {
+                document.getElementById('earnMonetag').addEventListener(evt, (e) => {
+                    if (evt === 'touchend') e.preventDefault();
+                    const token = localStorage.getItem('token');
+                    if (!token) return showNotif('Not logged in');
+
+                    fetch(API_BASE + '/api/earn/monetag-reward/status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    })
+                    .then(r => r.json())
+                    .then(statusData => {
+                        if (!statusData.can_watch) throw 'claimed';
+                        return loadMonetagSDK();
+                    })
+                    .then(() => show_11151650())
+                    .then(() => claimMonetagReward(token))
+                    .catch(e => {
+                        if (e === 'claimed') return;
+                        showNotif('Watching ad...');
+                        setTimeout(() => claimMonetagReward(token), 3000);
+                    });
                 });
             });
 

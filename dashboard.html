@@ -371,7 +371,7 @@
                         <div class="earnCount" id="richadsStatus">Available</div>
                     </div>
                 </div>
-                <div class="earnTask" id="earnMonetag">
+                <div class="earnTask" id="earnMonetag" role="button" tabindex="0">
                     <div class="earnInfo">
                         <span class="earnName">Watch Ad 2</span>
                         <span class="earnDesc" id="monetagDesc">Watch a short ad to earn rewards</span>
@@ -1838,10 +1838,7 @@
                 });
             }
 
-            document.getElementById('earnMonetag').addEventListener('click', (e) => {
-                const token = localStorage.getItem('token');
-                if (!token) return showNotif('Not logged in');
-
+            function startMonetagFlow(token) {
                 (async () => {
                     try {
                         const statusRes = await fetch(API_BASE + '/api/earn/monetag-reward/status', {
@@ -1866,7 +1863,18 @@
                         });
                     } catch (e) {}
                 })();
-            });
+            }
+
+            function handleMonetagClick(e) {
+                e.preventDefault();
+                const token = localStorage.getItem('token');
+                if (!token) return showNotif('Not logged in');
+                startMonetagFlow(token);
+            }
+
+            const monetagEl = document.getElementById('earnMonetag');
+            monetagEl.addEventListener('touchstart', handleMonetagClick, { passive: false });
+            monetagEl.addEventListener('click', handleMonetagClick);
 
             document.getElementById('swapBtn').addEventListener('click', () => {
                 showNotif('SWAP FEATURE - Coming Soon');

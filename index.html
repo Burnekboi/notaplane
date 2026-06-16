@@ -799,6 +799,7 @@
                 "assets/base thunder.png",
                 "assets/electric ball.png",
                 "assets/explosionC.png",
+                "assets/jackpotbox.png",
             ];
 
             function startGameAfterPreload() {
@@ -1060,6 +1061,84 @@
             let authToken = null;      // JWT token for API calls
             let syncInterval = null;   // periodic sync interval handle
             let syncMutex = false;     // prevents concurrent sync calls
+
+            // ── Jackpot System ──────────────────────────────────────────────────
+            const JACKPOT_TIERS = [
+                { id: 'mega',   label: 'MEGA',  color: '#ff2244', chance: 0.0002, reseed: 2000 },
+                { id: 'major',  label: 'MAJOR', color: '#ff8800', chance: 0.001,  reseed: 500 },
+                { id: 'mini',   label: 'MINI',  color: '#44ddff', chance: 0.005,  reseed: 100 },
+            ];
+            let jackpotPools = { mini: 100, major: 500, mega: 2000 };
+            let jackpotSynced = false;
+            let jackpotAnimation = null; // { tier, prize, startTime } when won
+
+            function contributeToJackpot(betAmt) {
+                const contribution = Math.round(betAmt * 0.02);
+                if (contribution <= 0) return;
+                jackpotPools.mini += Math.round(contribution * 0.5);
+                jackpotPools.major += Math.round(contribution * 0.3);
+                jackpotPools.mega += contribution - Math.round(contribution * 0.5) - Math.round(contribution * 0.3);
+                // Sync contribution to server (non-blocking)
+                if (authToken) {
+                    fetch(API_BASE + '/api/game/jackpot/contribute', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                        body: JSON.stringify({ amount: betAmt }),
+                    }).then(r => r.json()).then(data => {
+                        if (data.pools) jackpotPools = data.pools;
+                    }).catch(() => {});
+                }
+            }
+
+            function tryTriggerJackpot() {
+                for (const tier of JACKPOT_TIERS) {
+                    if (Math.random() < tier.chance) {
+                        const prize = jackpotPools[tier.id];
+                        if (prize <= tier.reseed) continue;
+                        jackpotPools[tier.id] = tier.reseed;
+                        jackpotAnimation = { tier: tier.id, prize, label: tier.label, color: tier.color, startTime: performance.now() };
+                        balance += prize;
+                        pushPopup(prize.toString(), 'JACKPOT ' + tier.label);
+                        // Sync to server (credits balance + resets pool)
+                        if (authToken) {
+                            fetch(API_BASE + '/api/game/jackpot/claim', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                                body: JSON.stringify({ tier: tier.id }),
+                            }).then(r => r.json()).then(data => {
+                                if (data.pools) jackpotPools = data.pools;
+                                if (data.sk_balance !== undefined) balance = data.sk_balance;
+                            }).catch(() => {});
+                        }
+                        return;
+                    }
+                }
+            }
+
+            function pushPopup(text, subText) {
+                popups.push({
+                    x: W / 2,
+                    y: H / 2 - 20,
+                    startTime: performance.now(),
+                    scale: 0,
+                    alpha: 1,
+                    text: text,
+                    subText: subText || '',
+                    duration: 3500,
+                });
+            }
+
+            function fetchJackpotStatus() {
+                if (!authToken) return;
+                fetch(API_BASE + '/api/game/jackpot/status', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                }).then(r => r.json()).then(data => {
+                    if (data.mini !== undefined) {
+                        jackpotPools = { mini: data.mini, major: data.major, mega: data.mega };
+                        jackpotSynced = true;
+                    }
+                }).catch(() => {});
+            }
 
             let mouseX = W / 2,
                 mouseY = H / 2;
@@ -1362,6 +1441,10 @@
 
             const introTitleImg = new Image();
             introTitleImg.src = "assets/intro title.png";
+
+            const jackpotBoxImg = new Image();
+            jackpotBoxImg.src = "assets/jackpotbox.png";
+
             const INTRO_DURATION = 5000;
             const INTRO_FADE_DURATION = 1500;
             const STAR_COUNT = 250;
@@ -2792,6 +2875,8 @@
 
                 balance -= betAmount;
                 sessionTotalBets += betAmount;
+
+                contributeToJackpot(betAmount);
 
                 playBulletFireSound();
 
@@ -5473,6 +5558,8 @@
 
                 // Only remove enemy if it's not D3/D4 (special death sequences handle removal)
 
+                tryTriggerJackpot();
+
                 if (idx !== -1 && !e.isD3 && !e.isD4) { addKill(e); enemies.splice(idx, 1); }
             }
 
@@ -6845,28 +6932,7 @@
                     }
                 }
                 }
-
-                // HUD
-
-                document.getElementById("balanceDisplay").textContent =
-                    balance >= 1000000
-                        ? (balance / 1000000).toFixed(balance % 1000000 === 0 ? 0 : 1) + 'M'
-                        : balance >= 100000
-                          ? Math.floor(balance / 1000) + 'k'
-                          : balance.toString();
-
-                if (rtp.totalSpent > 0) {
-                    const rtpPct = (
-                        (rtp.totalPaid / rtp.totalSpent) *
-                        100
-                    ).toFixed(1);
-
-                    document.getElementById("rtpDisplay").textContent =
-                        `Shots: ${rtp.totalSpent}  Won: ${rtp.totalPaid.toFixed(0)}  RTP: ${rtpPct}%`;
-                }
             }
-
-            // ── Draw ──────────────────────────────────────────────────────────────────
 
             function drawBg() {
                 // Apply game-space transform (used every frame)
@@ -6883,11 +6949,97 @@
                 }
             }
 
+            function drawJackpotBox() {
+                const cw = uiCanvas.width;
+                const boxW = 180;
+                const boxH = 56;
+                const boxX = cw / 2 - boxW / 2;
+                const boxY = 6;
+                const pad = 4;
+                const tierW = (boxW - pad * 4) / 3;
+
+                uiCtx.save();
+
+                // Background panel
+                uiCtx.fillStyle = 'rgba(0,0,0,0.75)';
+                uiCtx.strokeStyle = 'rgba(255,200,100,0.35)';
+                uiCtx.lineWidth = 1.5;
+                const r = 6;
+                uiCtx.beginPath();
+                uiCtx.moveTo(boxX + r, boxY);
+                uiCtx.lineTo(boxX + boxW - r, boxY);
+                uiCtx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
+                uiCtx.lineTo(boxX + boxW, boxY + boxH - r);
+                uiCtx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
+                uiCtx.lineTo(boxX + r, boxY + boxH);
+                uiCtx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
+                uiCtx.lineTo(boxX, boxY + r);
+                uiCtx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+                uiCtx.closePath();
+                uiCtx.fill();
+                uiCtx.stroke();
+
+                // Draw jackpotbox.png overlay if loaded
+                if (jackpotBoxImg.complete && jackpotBoxImg.naturalWidth > 0) {
+                    uiCtx.drawImage(jackpotBoxImg, boxX, boxY, boxW, boxH);
+                }
+
+                // Tier labels + values
+                uiCtx.textAlign = 'center';
+                const tiers = [
+                    { id: 'mega',   label: 'MEGA',  color: '#ff2244', x: boxX + pad + tierW * 0.5 },
+                    { id: 'major',  label: 'MAJOR', color: '#ff8800', x: boxX + pad * 2 + tierW + tierW * 0.5 },
+                    { id: 'mini',   label: 'MINI',  color: '#44ddff', x: boxX + pad * 3 + tierW * 2 + tierW * 0.5 },
+                ];
+
+                for (const t of tiers) {
+                    const tierX = t.x;
+                    const val = jackpotPools[t.id];
+
+                    // Label
+                    uiCtx.font = 'bold 8px Arial';
+                    uiCtx.fillStyle = t.color;
+                    uiCtx.shadowColor = t.color;
+                    uiCtx.shadowBlur = 4;
+                    uiCtx.fillText(t.label, tierX, boxY + 16);
+                    uiCtx.shadowBlur = 0;
+
+                    // Value
+                    const displayVal = val >= 1000000
+                        ? (val / 1000000).toFixed(1) + 'M'
+                        : val >= 1000
+                            ? (val / 1000).toFixed(1) + 'K'
+                            : val.toString();
+                    uiCtx.font = 'bold 11px Arial';
+                    uiCtx.fillStyle = '#ffd866';
+                    uiCtx.shadowColor = '#000';
+                    uiCtx.shadowBlur = 6;
+                    uiCtx.fillText(displayVal, tierX, boxY + 40);
+                    uiCtx.shadowBlur = 0;
+
+                    // Separators
+                    if (t.id !== 'mini') {
+                        const sepX = boxX + pad + tierW + (t.id === 'major' ? pad : pad * 2);
+                        uiCtx.strokeStyle = 'rgba(255,200,100,0.15)';
+                        uiCtx.lineWidth = 1;
+                        uiCtx.beginPath();
+                        uiCtx.moveTo(sepX, boxY + 10);
+                        uiCtx.lineTo(sepX, boxY + boxH - 10);
+                        uiCtx.stroke();
+                    }
+                }
+
+                uiCtx.restore();
+            }
+
             function drawUi() {
-                if (popups.length === 0 && baseRewardPopups.length === 0 && refundPopups.length === 0) return;
                 // Reset transform and clear full canvas
                 uiCtx.setTransform(1, 0, 0, 1, 0, 0);
                 uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+                drawJackpotBox();
+
+                if (popups.length === 0 && baseRewardPopups.length === 0 && refundPopups.length === 0) return;
                 // Apply game-space transform
                 uiCtx.setTransform(gameScale, 0, 0, gameScale, gameOffsetX, gameOffsetY);
                 { const ctx = uiCtx;
@@ -6983,6 +7135,65 @@
                         ctx.fillText(bp.text, bpX, bpY - bpRise);
                         ctx.shadowBlur = 0;
                         ctx.restore();
+                    }
+                }
+
+                // ── Jackpot win animation ────────────────────────────────────────
+                if (jackpotAnimation) {
+                    const jaNow = performance.now();
+                    const jaElapsed = jaNow - jackpotAnimation.startTime;
+                    const jaDuration = 4000;
+
+                    if (jaElapsed < jaDuration) {
+                        const jaCtx = uiCtx;
+                        const cw = uiCanvas.width;
+                        const ch = uiCanvas.height;
+                        const progress = jaElapsed / jaDuration;
+                        const popUp = Math.sin(progress * Math.PI) * 40;
+                        const alpha = progress < 0.8 ? 1 : Math.max(0, 1 - (progress - 0.8) / 0.2);
+                        const scale = 0.5 + 0.5 * Math.min(1, progress * 3);
+
+                        jaCtx.save();
+                        jaCtx.setTransform(1, 0, 0, 1, 0, 0);
+                        jaCtx.globalAlpha = alpha;
+                        jaCtx.textAlign = 'center';
+                        jaCtx.textBaseline = 'middle';
+
+                        // Glow background
+                        const grad = jaCtx.createRadialGradient(cw / 2, ch / 2 - popUp, 0, cw / 2, ch / 2 - popUp, 200);
+                        grad.addColorStop(0, jackpotAnimation.color + '40');
+                        grad.addColorStop(1, 'transparent');
+                        jaCtx.fillStyle = grad;
+                        jaCtx.fillRect(0, 0, cw, ch);
+
+                        // JACKPOT! text
+                        jaCtx.font = `bold ${Math.round(48 * scale)}px Arial`;
+                        jaCtx.shadowColor = jackpotAnimation.color;
+                        jaCtx.shadowBlur = 30;
+                        jaCtx.fillStyle = '#fff';
+                        jaCtx.fillText('JACKPOT!', cw / 2, ch / 2 - 30 - popUp);
+                        jaCtx.shadowBlur = 0;
+
+                        // Tier label
+                        jaCtx.font = `bold ${Math.round(28 * scale)}px Arial`;
+                        jaCtx.fillStyle = jackpotAnimation.color;
+                        jaCtx.shadowColor = jackpotAnimation.color;
+                        jaCtx.shadowBlur = 20;
+                        jaCtx.fillText(jackpotAnimation.label, cw / 2, ch / 2 + 10 - popUp);
+                        jaCtx.shadowBlur = 0;
+
+                        // Prize amount
+                        const prizeStr = '+' + jackpotAnimation.prize.toString();
+                        jaCtx.font = `bold ${Math.round(36 * scale)}px Arial`;
+                        jaCtx.fillStyle = '#ffd866';
+                        jaCtx.shadowColor = '#ffd866';
+                        jaCtx.shadowBlur = 15;
+                        jaCtx.fillText(prizeStr, cw / 2, ch / 2 + 50 - popUp);
+                        jaCtx.shadowBlur = 0;
+
+                        jaCtx.restore();
+                    } else {
+                        jackpotAnimation = null;
                     }
                 }
             }
@@ -10292,7 +10503,10 @@ const API_BASE = window.location.origin;
 
 function startPeriodicSync() {
     if (syncInterval) clearInterval(syncInterval);
-    syncInterval = setInterval(syncBalanceNow, 30000);
+    syncInterval = setInterval(() => {
+        syncBalanceNow();
+        fetchJackpotStatus();
+    }, 30000);
 }
 
 async function initBalanceFromServer() {
@@ -10303,6 +10517,7 @@ async function initBalanceFromServer() {
         // Flush unsynced deltas first so fetchBalance gets the true server balance
         await flushUnsyncedDeltas();
         fetchBalance();
+        fetchJackpotStatus();
         startPeriodicSync();
     }
 
@@ -10332,6 +10547,7 @@ async function initBalanceFromServer() {
                         fetchBalance();
                     });
                     startPeriodicSync();
+                    fetchJackpotStatus();
                 }
             })
             .catch(() => { /* offline mode — local balance only */ });

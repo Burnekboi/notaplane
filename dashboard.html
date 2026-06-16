@@ -1838,30 +1838,34 @@
                 });
             }
 
-            ['click', 'touchend'].forEach(evt => {
-                document.getElementById('earnMonetag').addEventListener(evt, (e) => {
-                    if (evt === 'touchend') e.preventDefault();
-                    const token = localStorage.getItem('token');
-                    if (!token) return showNotif('Not logged in');
+            document.getElementById('earnMonetag').addEventListener('click', (e) => {
+                const token = localStorage.getItem('token');
+                if (!token) return showNotif('Not logged in');
 
-                    (async () => {
-                        try {
-                            const statusRes = await fetch(API_BASE + '/api/earn/monetag-reward/status', {
-                                headers: { 'Authorization': 'Bearer ' + token }
-                            });
-                            const statusData = await statusRes.json();
-                            if (!statusData.can_watch) return;
+                (async () => {
+                    try {
+                        const statusRes = await fetch(API_BASE + '/api/earn/monetag-reward/status', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        const statusData = await statusRes.json();
+                        if (!statusData.can_watch) return;
 
-                            await loadMonetagSDK();
-                            show_11151650().then(() => {
-                                claimMonetagReward(token);
-                            }).catch(() => {
-                                showNotif('Watching ad...');
-                                setTimeout(() => claimMonetagReward(token), 3000);
-                            });
-                        } catch (e) {}
-                    })();
-                });
+                        await loadMonetagSDK();
+
+                        if (typeof show_11151650 !== 'function') {
+                            showNotif('Watching ad...');
+                            setTimeout(() => claimMonetagReward(token), 3000);
+                            return;
+                        }
+
+                        show_11151650().then(() => {
+                            claimMonetagReward(token);
+                        }).catch(() => {
+                            showNotif('Watching ad...');
+                            setTimeout(() => claimMonetagReward(token), 3000);
+                        });
+                    } catch (e) {}
+                })();
             });
 
             document.getElementById('swapBtn').addEventListener('click', () => {

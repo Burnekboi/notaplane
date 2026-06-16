@@ -6959,7 +6959,7 @@
             function drawJackpotBox() {
                 const cw = uiCanvas.width;
                 const boxW = 180;
-                const boxH = 56;
+                const boxH = 65;
                 const boxX = cw / 2 - boxW / 2;
                 const boxY = 6;
                 const pad = 4;
@@ -6975,20 +6975,18 @@
                 // Values only (labels are baked into the image)
                 uiCtx.textAlign = 'center';
                 uiCtx.textBaseline = 'middle';
-                const megaY = boxY + 33;
+                const megaY = boxY + 28;
                 const tierXs = [
-                    { id: 'major', x: boxX + pad + tierW * 0.5,          y: boxY + 41 },
+                    { id: 'major', x: boxX + pad + tierW * 0.5,          y: boxY + 45 },
                     { id: 'mega',  x: boxX + pad * 2 + tierW + tierW * 0.5, y: megaY },
-                    { id: 'mini',  x: boxX + pad * 3 + tierW * 2 + tierW * 0.5, y: boxY + 41 },
+                    { id: 'mini',  x: boxX + pad * 3 + tierW * 2 + tierW * 0.5, y: boxY + 45 },
                 ];
 
                 for (const t of tierXs) {
                     const val = jackpotPools[t.id];
                     const displayVal = val >= 1000000
-                        ? (val / 1000000).toFixed(1) + 'M'
-                        : val >= 1000
-                            ? (val / 1000).toFixed(1) + 'K'
-                            : val.toString();
+                        ? (val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1) + 'M'
+                        : val.toString();
                     uiCtx.font = 'bold 12px Arial';
                     uiCtx.fillStyle = '#ffd866';
                     uiCtx.shadowColor = '#000';

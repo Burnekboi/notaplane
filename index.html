@@ -1100,10 +1100,10 @@
                 }
             }
 
-            // 85% base chance on enemy kill (testing) → starts jackpot sequence (glow → roulette → award)
+            // 1% base chance on enemy kill → starts jackpot sequence (glow → roulette → award)
             function tryTriggerJackpot() {
-                if (jackpotState) return;
-                if (Math.random() < 0.85) {
+                if (jackpotState) return false;
+                if (Math.random() < 0.01) {
                     // Weighted tier selection: Mega 5%, Major 15%, Mini 80%
                     const roll = Math.random();
                     let selectedId;
@@ -1117,6 +1117,8 @@
                         clearInterval(jackpotIncrementInterval);
                         jackpotIncrementInterval = null;
                     }
+                    // Lock player attacks during jackpot sequence
+                    playerAttackLocked = true;
                     // Start GLOW phase (2s) → then roulette (5s)
                     jackpotState = {
                         phase: 'glow',
@@ -1129,7 +1131,9 @@
                         color: tier.color,
                         awarded: false
                     };
+                    return true;
                 }
+                return false;
             }
 
             // Called every frame from update() — advances the jackpot state machine
@@ -1162,6 +1166,16 @@
                                 color: jackpotState.color,
                                 startTime: now
                             };
+                        }
+                        // Unlock player attacks
+                        playerAttackLocked = false;
+                        // Resume jackpot incrementing
+                        if (!jackpotIncrementInterval) {
+                            jackpotIncrementInterval = setInterval(() => {
+                                jackpotPools.mini += 0.3;
+                                jackpotPools.major += 0.3;
+                                jackpotPools.mega += 0.3;
+                            }, 100);
                         }
                         if (authToken) {
                             fetch(API_BASE + '/api/game/jackpot/claim', {
@@ -5554,7 +5568,10 @@
 
                     rtp.pay(payout);
 
-                    if (payout > 0) {
+                    // Jackpot check before reward popup — suppress normal popups on jackpot trigger
+                    const jackpotTriggered = tryTriggerJackpot();
+
+                    if (payout > 0 && !jackpotTriggered) {
                         const now = performance.now();
                         popups.push({
                             x: e.x,
@@ -5634,8 +5651,6 @@
                 if (e.isD4) triggerD4Death(e);
 
                 // Only remove enemy if it's not D3/D4 (special death sequences handle removal)
-
-                tryTriggerJackpot();
 
                 if (idx !== -1 && !e.isD3 && !e.isD4) { addKill(e); enemies.splice(idx, 1); }
             }
@@ -6390,11 +6405,11 @@
                                         !!autoTarget.isBoss,
                                     );
 
-                            // Auto-aim: 50% base instant-kill, 2% base crit, 2.7 base damage
+                            // Auto-aim: 0.005% base instant-kill, 2% base crit, 2.7 base damage
 
                             const autoInstant =
                                 rng.next() <
-                                0.5 +
+                                0.00005 +
                                     (critState.isActive() ? 0.01 : 0);
 
                                     const autoCrit =
@@ -6912,11 +6927,11 @@
 
                             const roll = rtp.rollHit(e.tierIndex, !!e.isBoss);
 
-                            // Manual bullet: 50% base instant-kill, 2.5% base crit, 2.5 base damage
+                            // Manual bullet: 0.005% base instant-kill, 2.5% base crit, 2.5 base damage
 
                             const bulletInstant =
                                 rng.next() <
-                                0.5 +
+                                0.00005 +
                                     (critState.isActive() ? 0.01 : 0);
 
                             const bulletCrit =

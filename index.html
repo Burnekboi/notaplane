@@ -815,9 +815,9 @@
                 updateAutoBtnLock();
                 // Jackpot auto-increment: +0.5 to each tier every 100ms
                 setInterval(() => {
-                    jackpotPools.mini += 0.5;
-                    jackpotPools.major += 0.5;
-                    jackpotPools.mega += 0.5;
+                    jackpotPools.mini += 0.3;
+                    jackpotPools.major += 0.3;
+                    jackpotPools.mega += 0.3;
                 }, 100);
             }
 
@@ -1077,6 +1077,7 @@
             let jackpotPools = { mini: 1000, major: 2500, mega: 10000 };
             let jackpotSynced = false;
             let jackpotAnimation = null; // { tier, prize, startTime } when won
+            let jackpotRoulette = null; // { startTime, selectedId, prize, label, color, awarded }
 
             function contributeToJackpot(betAmt) {
                 const contribution = Math.round(betAmt * 0.02);
@@ -1096,30 +1097,63 @@
                 }
             }
 
+            // 1% base chance on enemy kill → start jackpot roulette
             function tryTriggerJackpot() {
-                for (const tier of JACKPOT_TIERS) {
-                    if (Math.random() < tier.chance) {
-                        const prize = jackpotPools[tier.id];
-                        const baseReseed = tier.reseed * betAmount;
-                        if (prize <= baseReseed) continue;
-                        jackpotPools[tier.id] = baseReseed;
-                        jackpotAnimation = { tier: tier.id, prize, label: tier.label, color: tier.color, startTime: performance.now() };
-                        balance += prize;
-                        pushPopup(prize.toString(), 'JACKPOT ' + tier.label);
-                        // Sync to server (credits balance + resets pool)
-                        if (authToken) {
-                            fetch(API_BASE + '/api/game/jackpot/claim', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-                                body: JSON.stringify({ tier: tier.id }),
-                            }).then(r => r.json()).then(data => {
-                                if (data.pools) jackpotPools = data.pools;
-                                if (data.sk_balance !== undefined) balance = data.sk_balance;
-                            }).catch(() => {});
-                        }
-                        return;
-                    }
+                if (jackpotRoulette) return;
+                if (Math.random() < 0.01) {
+                    // Weighted tier selection: Mega 5%, Major 15%, Mini 80%
+                    const roll = Math.random();
+                    let selectedId;
+                    if (roll < 0.05) selectedId = 'mega';
+                    else if (roll < 0.20) selectedId = 'major';
+                    else selectedId = 'mini';
+                    const tier = JACKPOT_TIERS.find(t => t.id === selectedId);
+                    const prize = jackpotPools[selectedId];
+                    jackpotRoulette = {
+                        startTime: performance.now(),
+                        duration: 5000,
+                        selectedId,
+                        prize,
+                        label: tier.label,
+                        color: tier.color,
+                        awarded: false
+                    };
                 }
+            }
+
+            // Called every frame from update() — awards the prize when roulette ends
+            function updateJackpotRoulette() {
+                if (!jackpotRoulette || jackpotRoulette.awarded) return;
+                const now = performance.now();
+                const elapsed = now - jackpotRoulette.startTime;
+                if (elapsed < 5000) return;
+                jackpotRoulette.awarded = true;
+                const tier = JACKPOT_TIERS.find(t => t.id === jackpotRoulette.selectedId);
+                const prize = jackpotPools[tier.id];
+                const baseReseed = tier.reseed * betAmount;
+                if (prize > baseReseed) {
+                    jackpotPools[tier.id] = baseReseed;
+                    balance += prize;
+                    pushPopup(prize.toFixed(1), 'JACKPOT ' + jackpotRoulette.label);
+                    jackpotAnimation = {
+                        tier: tier.id,
+                        prize,
+                        label: jackpotRoulette.label,
+                        color: jackpotRoulette.color,
+                        startTime: now
+                    };
+                }
+                if (authToken) {
+                    fetch(API_BASE + '/api/game/jackpot/claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                        body: JSON.stringify({ tier: tier.id }),
+                    }).then(r => r.json()).then(data => {
+                        if (data.pools) jackpotPools = data.pools;
+                        if (data.sk_balance !== undefined) balance = data.sk_balance;
+                    }).catch(() => {});
+                }
+                jackpotRoulette = null;
             }
 
             function pushPopup(text, subText) {
@@ -5578,6 +5612,7 @@
 
             function update(ts) {
                 flushPendingRewards();
+                updateJackpotRoulette();
 
                 for (let i = activeTitles.length - 1; i >= 0; i--) {
                     const t = activeTitles[i];
@@ -6991,14 +7026,55 @@
                 for (const t of tierXs) {
                     const val = jackpotPools[t.id];
                     const displayVal = val >= 1000000
-                        ? (val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1) + 'M'
-                        : val.toString();
+                        ? (val / 1000000).toFixed(1) + 'M'
+                        : val.toFixed(1);
                     uiCtx.font = 'bold 12px Arial';
                     uiCtx.fillStyle = '#ffd866';
                     uiCtx.shadowColor = '#000';
                     uiCtx.shadowBlur = 6;
                     uiCtx.fillText(displayVal, t.x, t.y);
                     uiCtx.shadowBlur = 0;
+                }
+
+                // ── Jackpot roulette highlight cycling ────────────────────────────
+                if (jackpotRoulette && !jackpotRoulette.awarded) {
+                    const now = performance.now();
+                    const elapsed = now - jackpotRoulette.startTime;
+                    const progress = Math.min(1, elapsed / 5000);
+                    const tierOrder = ['major', 'mega', 'mini'];
+                    const targetIdx = tierOrder.indexOf(jackpotRoulette.selectedId);
+
+                    let highlightIdx;
+                    if (progress < 0.85) {
+                        const cyclePos = (elapsed / 150) % 3;
+                        highlightIdx = Math.floor(cyclePos);
+                    } else {
+                        const settleProgress = (progress - 0.85) / 0.15;
+                        if (settleProgress < 0.4) {
+                            const cyclePos = (elapsed / 400) % 3;
+                            highlightIdx = Math.floor(cyclePos);
+                        } else if (settleProgress < 0.7) {
+                            highlightIdx = Math.random() < 0.4 ? targetIdx : Math.floor(Math.random() * 3);
+                        } else {
+                            highlightIdx = targetIdx;
+                        }
+                    }
+
+                    const highlightId = tierOrder[highlightIdx];
+                    const slot = tierXs.find(t => t.id === highlightId);
+                    if (slot) {
+                        const hv = jackpotPools[highlightId];
+                        const hDisplay = hv >= 1000000 ? (hv / 1000000).toFixed(1) + 'M' : hv.toFixed(1);
+                        uiCtx.save();
+                        uiCtx.textAlign = 'center';
+                        uiCtx.textBaseline = 'middle';
+                        uiCtx.font = 'bold 13px Arial';
+                        uiCtx.shadowColor = '#00ffff';
+                        uiCtx.shadowBlur = 30;
+                        uiCtx.fillStyle = '#ffffff';
+                        uiCtx.fillText(hDisplay, slot.x, slot.y);
+                        uiCtx.restore();
+                    }
                 }
 
                 uiCtx.restore();
@@ -7155,7 +7231,7 @@
                         jaCtx.shadowBlur = 0;
 
                         // Prize amount
-                        const prizeStr = '+' + jackpotAnimation.prize.toString();
+                        const prizeStr = '+' + jackpotAnimation.prize.toFixed(1);
                         jaCtx.font = `bold ${Math.round(36 * scale)}px Arial`;
                         jaCtx.fillStyle = '#ffd866';
                         jaCtx.shadowColor = '#ffd866';

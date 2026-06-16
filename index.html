@@ -6959,7 +6959,7 @@
             function drawJackpotBox() {
                 const cw = uiCanvas.width;
                 const boxW = 180;
-                const boxH = 65;
+                const boxH = 70;
                 const boxX = cw / 2 - boxW / 2;
                 const boxY = 6;
                 const pad = 4;
@@ -6975,7 +6975,7 @@
                 // Values only (labels are baked into the image)
                 uiCtx.textAlign = 'center';
                 uiCtx.textBaseline = 'middle';
-                const megaY = boxY + 28;
+                const megaY = boxY + 24;
                 const tierXs = [
                     { id: 'major', x: boxX + pad + tierW * 0.5,          y: boxY + 45 },
                     { id: 'mega',  x: boxX + pad * 2 + tierW + tierW * 0.5, y: megaY },

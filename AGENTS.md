@@ -63,6 +63,18 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 - Rendering/FX layer:
   - `draw()` renders entities and heavy visual effects (lightning, explosions, smoke, beam/glow effects) directly via Canvas 2D.
 
+## Jackpot System
+- **Pools** (`jackpotPools`): `mini`/`major`/`mega`, auto-increment +0.3 every 100ms (stored in `jackpotIncrementInterval`)
+- **Bet scaling**: When bet changes, pools multiply by `newBet/oldBet`. Reseed = `tier.reseed * betAmount`.
+- **Trigger**: Every enemy kill rolls **1%** via `tryTriggerJackpot()`. If hit → 3-phase sequence:
+  1. **Glow** (2s): Increment stops, box pulses via `jackpotState.color` glow, `jackpottitle.png` appears above player base
+  2. **Roulette** (5s): Cycling highlight on 3 tiers with cyan glow, slows and settles on winner
+  3. **Award**: Winner selected by weighted RNG (Mega 5%, Major 15%, Mini 80%) determined at trigger time. Prize credited, pool reseeded, server sync via `/api/game/jackpot/claim`
+- **Contribution**: 2% of each bet (`contributeToJackpot`) splits 50/30/20 Mini/Major/Mega
+- **Display**: Always `.0` format, values scale with bet multiplier
+- **State machine**: `jackpotState` = `{ phase: 'glow'|'roulette', phaseStartTime, selectedId, prize, ... }`. `updateJackpotState()` called every frame from `update()`.
+- **Draw**: `drawJackpotBox()` renders glow/roulette effects on `uiCanvas`. `jackpottitle.png` drawn above player base like other ability titles.
+
 ## Git workflow
 - **Commit and push after every code change.** Every time I finish writing code (bug fix, feature, refactor, etc.), I must immediately:
   1. `git add -A`

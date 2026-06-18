@@ -1,7 +1,9 @@
 const { Pool } = require('pg');
+const { parse } = require('pg-connection-string');
 
+const pgConfig = parse(process.env.SUPABASE_URI || '');
 const pool = new Pool({
-  connectionString: process.env.SUPABASE_URI,
+  ...pgConfig,
   ssl: { rejectUnauthorized: false },
   family: 4,
 });

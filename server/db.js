@@ -2,6 +2,8 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.SUPABASE_URI,
+  ssl: { rejectUnauthorized: false },
+  family: 4,
 });
 
 pool.on('connect', () => console.log('Database connected'));

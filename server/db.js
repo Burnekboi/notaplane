@@ -5,7 +5,6 @@ const pgConfig = parse(process.env.SUPABASE_URI || '');
 const pool = new Pool({
   ...pgConfig,
   ssl: { rejectUnauthorized: false },
-  family: 4,
 });
 
 pool.on('connect', () => console.log('Database connected'));

@@ -105,36 +105,26 @@ function initBot() {
           }
         }
 
-        await ctx.replyWithPhoto(
-          { source: 'assets/intro title.png' },
-          {
-            caption:
-              `🚀 <b>Welcome, ${name}!</b>\n\n` +
-              `Blast through waves of cosmic enemies, earn rewards, and climb the ranks!\n\n` +
-              `Tap the button below to jump into the action.`,
-            parse_mode: 'HTML',
-            ...Markup.inlineKeyboard([
-              Markup.button.webApp('🎮 Play', makeDashUrl(user)),
-            ]),
-          },
+        await ctx.replyWithHTML(
+          `🚀 <b>Welcome, ${name}!</b>\n\n` +
+          `Blast through waves of cosmic enemies, earn rewards, and climb the ranks!\n\n` +
+          `Tap the button below to jump into the action.`,
+          Markup.inlineKeyboard([
+            Markup.button.webApp('🎮 Play', makeDashUrl(user)),
+          ]),
         );
       } else {
-        await ctx.replyWithPhoto(
-          { source: 'assets/intro title.png' },
-          {
-            caption:
-              `🚀 <b>Welcome back, ${name}!</b>\n\n` +
-              `Jump back into the action!`,
-            parse_mode: 'HTML',
-            ...Markup.inlineKeyboard([
-              Markup.button.webApp('🎮 Play', makeDashUrl(user)),
-            ]),
-          },
+        await ctx.replyWithHTML(
+          `🚀 <b>Welcome back, ${name}!</b>\n\n` +
+          `Jump back into the action!`,
+          Markup.inlineKeyboard([
+            Markup.button.webApp('🎮 Play', makeDashUrl(user)),
+          ]),
         );
       }
     } catch (err) {
-      console.error('/start error:', err.message, err.stack);
-      await ctx.reply('Error: ' + err.message);
+      console.error('/start error:', err.message);
+      await ctx.reply('Sorry, something went wrong. Try again later.');
     }
   });
 

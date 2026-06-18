@@ -2,10 +2,8 @@ const { Telegraf, Markup } = require('telegraf');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
-const RAILWAY_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN.replace(/^https?:\/\//, '')}`
-  : null;
-const WEBAPP_URL = (process.env.WEBAPP_URL || RAILWAY_DOMAIN || 'http://localhost:3000').replace(/\/+$/, '');
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || null;
+const WEBAPP_URL = (process.env.WEBAPP_URL || RENDER_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 const CHANNEL_USERNAME = '@nirkagames';
 

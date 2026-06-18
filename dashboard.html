@@ -354,7 +354,7 @@
                 <div class="earnTask" id="earnWallet">
                     <div class="earnInfo">
                         <span class="earnName">Connect Wallet</span>
-                        <span class="earnDesc" id="walletDesc">Connect your TON wallet to claim</span>
+                        <span class="earnDesc" id="walletDesc">Connect your GRAM wallet to claim</span>
                     </div>
                     <div class="earnRight">
                         <div class="earnReward">+1000 <span class="earnToken">SK</span></div>
@@ -392,7 +392,7 @@
                     <div class="buyInfo">
                         <span class="buyAmount">10,000 SK Token</span>
                     </div>
-                    <div class="buyPrice">2.5 TON</div>
+                    <div class="buyPrice">2.5 GRAM</div>
                     <button class="buyBuyBtn">Buy</button>
                 </div>
                 <div class="buyOption" data-sk="50000" data-tons="7.5">
@@ -400,7 +400,7 @@
                     <div class="buyInfo">
                         <span class="buyAmount">50,000 SK Token</span>
                     </div>
-                    <div class="buyPrice">7.5 TON</div>
+                    <div class="buyPrice">7.5 GRAM</div>
                     <button class="buyBuyBtn">Buy</button>
                 </div>
                 <div class="buyOption" data-sk="100000" data-tons="12.5">
@@ -408,7 +408,7 @@
                     <div class="buyInfo">
                         <span class="buyAmount">100,000 SK Token</span>
                     </div>
-                    <div class="buyPrice">12.5 TON</div>
+                    <div class="buyPrice">12.5 GRAM</div>
                     <button class="buyBuyBtn">Buy</button>
                 </div>
                 <div class="buyDivider"></div>
@@ -421,12 +421,12 @@
                         <span class="buyDesc">Automatic lightning attacks</span>
                     </div>
                     <div class="buyWeaponPrices">
-                        <span class="buyWeaponPrice">69,999 SK</span>
-                        <span class="buyWeaponPrice ton">5.5 TON</span>
+                        <span class="buyWeaponPrice">39,999 SK</span>
+                        <span class="buyWeaponPrice ton">5.5 GRAM</span>
                     </div>
                     <div class="buyWeaponBtns">
                         <button class="buyWeaponBtn sk" data-payment="sk">Buy SK</button>
-                        <button class="buyWeaponBtn ton" data-payment="ton">Buy TON</button>
+                        <button class="buyWeaponBtn ton" data-payment="ton">Buy GRAM</button>
                     </div>
                 </div>
             </div>
@@ -1650,7 +1650,7 @@
                     } else {
                         statusEl.textContent = 'Connect Wallet';
                         statusEl.style.color = '#ffd866';
-                        descEl.textContent = 'Connect your TON wallet to claim';
+                        descEl.textContent = 'Connect your GRAM wallet to claim';
                     }
                 } catch (e) {}
             }
@@ -2218,7 +2218,7 @@
                 } else {
                     wrap.classList.remove('owned');
                     btns.forEach(b => {
-                        b.textContent = b.dataset.payment === 'sk' ? 'Buy SK' : 'Buy TON';
+                        b.textContent = b.dataset.payment === 'sk' ? 'Buy SK' : 'Buy GRAM';
                         b.className = 'buyWeaponBtn ' + b.dataset.payment;
                     });
                 }

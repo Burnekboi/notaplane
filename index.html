@@ -2189,9 +2189,9 @@
             function rollNukeDmg() {
                 const r = rng.next();
 
-                // 1.5% base instant kill + crit window bonus
+                // 7% base instant kill + crit window bonus
                 const instantKillChance =
-                    0.015 + (critState.isActive() ? 0.01 : 0);
+                    0.07 + (critState.isActive() ? 0.01 : 0);
 
                 if (r < instantKillChance) return { dmg: 99999, instant: true };
 
@@ -6412,11 +6412,11 @@
                                         !!autoTarget.isBoss,
                                     );
 
-                            // Auto-aim: 0.005% base instant-kill, 2% base crit, 2.7 base damage
+                            // Auto-aim: 5% base instant-kill, 2% base crit, 2.7 base damage
 
                             const autoInstant =
                                 rng.next() <
-                                0.00005 +
+                                0.05 +
                                     (critState.isActive() ? 0.01 : 0);
 
                                     const autoCrit =
@@ -6934,11 +6934,11 @@
 
                             const roll = rtp.rollHit(e.tierIndex, !!e.isBoss);
 
-                            // Manual bullet: 0.005% base instant-kill, 2.5% base crit, 2.5 base damage
+                            // Manual bullet: 5% base instant-kill, 2.5% base crit, 2.5 base damage
 
                             const bulletInstant =
                                 rng.next() <
-                                0.00005 +
+                                0.05 +
                                     (critState.isActive() ? 0.01 : 0);
 
                             const bulletCrit =

@@ -66,7 +66,7 @@ router.post('/buy-sk', async (req, res) => {
   }
 });
 
-const AUTO_LIGHTNING_SK_PRICE = 69999;
+const AUTO_LIGHTNING_SK_PRICE = 39999;
 const AUTO_LIGHTNING_TON_PRICE = 5.5;
 
 router.post('/buy-auto-lightning', async (req, res) => {

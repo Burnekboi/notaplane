@@ -133,8 +133,8 @@ function initBot() {
         );
       }
     } catch (err) {
-      console.error('/start error:', err.message);
-      await ctx.reply('Sorry, something went wrong. Try again later.');
+      console.error('/start error:', err.message, err.stack);
+      await ctx.reply('Error: ' + err.message);
     }
   });
 

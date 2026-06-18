@@ -47,8 +47,7 @@ router.post('/bet', async (req, res) => {
   try {
     const user = await User.findOneAndUpdate(
       { _id: req.user.userId, sk_balance: { $gte: amount } },
-      { $inc: { sk_balance: -amount, total_wagered: amount } },
-      { new: true }
+      { $inc: { sk_balance: -amount, total_wagered: amount } }
     );
     if (!user) return res.status(400).json({ error: 'Insufficient SK balance' });
 
@@ -56,7 +55,7 @@ router.post('/bet', async (req, res) => {
     const balanceBefore = balanceAfter + amount;
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'bet',
       token: 'SK',
       amount,
@@ -77,8 +76,7 @@ router.post('/win', async (req, res) => {
   try {
     const user = await User.findOneAndUpdate(
       { _id: req.user.userId },
-      { $inc: { sk_balance: amount, total_won: amount } },
-      { new: true }
+      { $inc: { sk_balance: amount, total_won: amount } }
     );
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -86,7 +84,7 @@ router.post('/win', async (req, res) => {
     const balanceBefore = balanceAfter - amount;
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'win',
       token: 'SK',
       amount,
@@ -108,23 +106,24 @@ router.post('/kills', async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    if (total > 0) user.total_kills = (user.total_kills || 0) + total;
-    if (harbinger > 0) user.harbinger_kills = (user.harbinger_kills || 0) + harbinger;
-    if (spacedraco > 0) user.spacedraco_kills = (user.spacedraco_kills || 0) + spacedraco;
-    if (ne2830 > 0) user.ne2830_kills = (user.ne2830_kills || 0) + ne2830;
+    const changes = {};
+    if (total > 0) changes.total_kills = (user.total_kills || 0) + total;
+    if (harbinger > 0) changes.harbinger_kills = (user.harbinger_kills || 0) + harbinger;
+    if (spacedraco > 0) changes.spacedraco_kills = (user.spacedraco_kills || 0) + spacedraco;
+    if (ne2830 > 0) changes.ne2830_kills = (user.ne2830_kills || 0) + ne2830;
 
-    user.rank = computeRank(user.total_kills);
+    changes.rank = computeRank(changes.total_kills ?? user.total_kills);
 
-    await user.save();
+    const updated = await User.update(user.id, changes);
 
     res.json({
-      total_kills: user.total_kills,
-      harbinger_kills: user.harbinger_kills,
-      spacedraco_kills: user.spacedraco_kills,
-      ne2830_kills: user.ne2830_kills,
-      rank: user.rank,
-      sk_balance: user.sk_balance,
-      achievements: getAchievementStatus(user),
+      total_kills: updated.total_kills,
+      harbinger_kills: updated.harbinger_kills,
+      spacedraco_kills: updated.spacedraco_kills,
+      ne2830_kills: updated.ne2830_kills,
+      rank: updated.rank,
+      sk_balance: updated.sk_balance,
+      achievements: getAchievementStatus(updated),
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -160,14 +159,14 @@ router.post('/achievements/claim', async (req, res) => {
     const skBalanceBefore = user.sk_balance;
     user.sk_balance += ach.reward;
 
+    const achievementsClaimed = [...(user.achievements_claimed || []), { id: achievementId }];
+
     if (ach.rewardSkj) {
       user.skj_balance += ach.rewardSkj;
     }
 
-    user.achievements_claimed.push({ id: achievementId });
-
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'win',
       token: 'SK',
       amount: ach.reward,
@@ -178,7 +177,7 @@ router.post('/achievements/claim', async (req, res) => {
 
     if (ach.rewardSkj) {
       await Transaction.create({
-        user_id: user._id,
+        user_id: user.id,
         type: 'win',
         token: 'SKJ',
         amount: ach.rewardSkj,
@@ -188,7 +187,9 @@ router.post('/achievements/claim', async (req, res) => {
       });
     }
 
-    await user.save();
+    const changes = { sk_balance: user.sk_balance, achievements_claimed: achievementsClaimed };
+    if (ach.rewardSkj) changes.skj_balance = user.skj_balance;
+    await User.update(user.id, changes);
 
     res.json({
       sk_balance: user.sk_balance,

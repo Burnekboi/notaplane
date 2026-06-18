@@ -13,7 +13,7 @@ router.post('/telegram', async (req, res) => {
   if (!id) return res.status(400).json({ error: 'Missing telegram id' });
 
   try {
-    let user = await User.findOne({ telegram_id: id });
+    let user = await User.findByTelegramId(id);
     let referralVerifiedThisSession = false;
 
     if (!user) {
@@ -26,12 +26,11 @@ router.post('/telegram', async (req, res) => {
         sk_balance: 1000,
       });
 
-      // Set referral code for new users
-      user.referral_code = 'SKJ' + user.telegram_id;
-      await user.save();
+      user = await User.update(user.id, { referral_code: 'SKJ' + user.telegram_id });
 
+      const balanceBefore = user.sk_balance - 1000;
       await Transaction.create({
-        user_id: user._id,
+        user_id: user.id,
         type: 'welcome_bonus',
         token: 'SK',
         amount: 1000,
@@ -41,52 +40,51 @@ router.post('/telegram', async (req, res) => {
       });
     }
 
-    // ── Check if this user was referred and not yet verified ──
     if (!user.referral_verified && user.referred_by) {
-      user.referral_verified = true;
-      await user.save();
+      user = await User.update(user.id, { referral_verified: true });
       referralVerifiedThisSession = true;
 
-      // Reward the referrer
       const referrer = await User.findById(user.referred_by);
       if (referrer) {
-        const verifiedCount = (referrer.referrals || []).filter(r => r.verified).length;
+        const referrals = referrer.referrals || [];
+        const verifiedCount = referrals.filter(r => r.verified).length;
 
-        // Mark this referral as verified in the referrer's list
-        const refEntry = (referrer.referrals || []).find(
-          r => r.user_id && r.user_id.toString() === user._id.toString()
+        const refEntry = referrals.find(
+          r => r.user_id && r.user_id.toString() === user.id.toString()
         );
+
         if (refEntry) {
           refEntry.verified = true;
-          refEntry.verified_at = new Date();
+          refEntry.verified_at = new Date().toISOString();
         }
 
-        // Credit reward if under max
+        let referrerChanges = { referrals };
         if (verifiedCount < MAX_REFERRALS && !refEntry?.reward_claimed) {
           if (refEntry) refEntry.reward_claimed = true;
+          referrerChanges.referrals = referrals;
           const balanceBefore = referrer.sk_balance;
           referrer.sk_balance += REFERRAL_REWARD;
+          referrerChanges.sk_balance = referrer.sk_balance;
 
           await Transaction.create({
-            user_id: referrer._id,
+            user_id: referrer.id,
             type: 'earn',
             token: 'SK',
             amount: REFERRAL_REWARD,
             balance_before: balanceBefore,
             balance_after: referrer.sk_balance,
-            reference: 'referral_verified_' + user._id,
+            reference: 'referral_verified_' + user.id,
           });
         }
 
-        await referrer.save();
+        await User.update(referrer.id, referrerChanges);
       }
     }
 
-    // Refresh user data after potential referral verification
-    user = await User.findById(user._id);
+    user = await User.findById(user.id);
 
     const token = jwt.sign(
-      { userId: user._id, telegramId: user.telegram_id },
+      { userId: user.id, telegramId: user.telegram_id },
       process.env.JWT_SECRET,
       { expiresIn: '24h' },
     );
@@ -96,7 +94,7 @@ router.post('/telegram', async (req, res) => {
     res.json({
       token,
       user: {
-        id: user._id,
+        id: user.id,
         telegram_id: user.telegram_id,
         username: user.username,
         first_name: user.first_name,
@@ -130,7 +128,7 @@ router.get('/me', require('../middleware/auth').authMiddleware, async (req, res)
     const verifiedReferrals = (user.referrals || []).filter(r => r.verified).length;
 
     res.json({
-      id: user._id,
+      id: user.id,
       telegram_id: user.telegram_id,
       username: user.username,
       first_name: user.first_name,

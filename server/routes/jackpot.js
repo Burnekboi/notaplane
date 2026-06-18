@@ -7,20 +7,16 @@ const Jackpot = require('../models/Jackpot');
 const router = Router();
 router.use(authMiddleware);
 
-// Contribution percentages
-const CONTRIBUTION_RATE = 0.02; // 2% of each bet goes to jackpot
-
-// Pool reseed values
+const CONTRIBUTION_RATE = 0.02;
 const RESEED = { mini: 100, major: 500, mega: 2000 };
 
-function getOrCreateJackpot() {
-  return Jackpot.findOne().then(jp => {
-    if (jp) return jp;
-    return Jackpot.create(RESEED);
-  });
+async function getOrCreateJackpot() {
+  let jp = await Jackpot.findOne();
+  if (jp) return jp;
+  jp = await Jackpot.create(RESEED);
+  return jp;
 }
 
-// GET /api/game/jackpot/status
 router.get('/status', async (req, res) => {
   try {
     const jp = await getOrCreateJackpot();
@@ -34,7 +30,6 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// POST /api/game/jackpot/contribute
 router.post('/contribute', async (req, res) => {
   const { amount } = req.body;
   if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
@@ -44,15 +39,17 @@ router.post('/contribute', async (req, res) => {
     const contribution = Math.round(amount * CONTRIBUTION_RATE);
     if (contribution <= 0) return res.json({ contributed: 0, pools: { mini: jp.mini, major: jp.major, mega: jp.mega } });
 
-    // Split: Mini 50%, Major 30%, Mega 20%
     const miniShare = Math.round(contribution * 0.5);
     const majorShare = Math.round(contribution * 0.3);
     const megaShare = contribution - miniShare - majorShare;
 
-    jp.mini += miniShare;
-    jp.major += majorShare;
-    jp.mega += megaShare;
-    await jp.save();
+    await Jackpot.update(jp.id, {
+      mini: jp.mini + miniShare,
+      major: jp.major + majorShare,
+      mega: jp.mega + megaShare,
+    });
+
+    jp = await Jackpot.findOne();
 
     res.json({
       contributed: contribution,
@@ -63,7 +60,6 @@ router.post('/contribute', async (req, res) => {
   }
 });
 
-// POST /api/game/jackpot/claim
 router.post('/claim', async (req, res) => {
   const { tier } = req.body;
   if (!tier || !['mini', 'major', 'mega'].includes(tier)) {
@@ -78,14 +74,11 @@ router.post('/claim', async (req, res) => {
     const prize = jp[tier];
     if (prize <= 0) return res.status(400).json({ error: 'Jackpot pool is empty' });
 
-    // Credit the player
     const balanceBefore = user.sk_balance;
     user.sk_balance += prize;
-    user.total_won += prize;
-    await user.save();
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'win',
       token: 'SK',
       amount: prize,
@@ -94,15 +87,16 @@ router.post('/claim', async (req, res) => {
       reference: 'jackpot_' + tier,
     });
 
-    // Reset the pool to reseed value
-    jp[tier] = RESEED[tier];
-    await jp.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, total_won: (user.total_won || 0) + prize });
+    await Jackpot.update(jp.id, { [tier]: RESEED[tier] });
+
+    const updatedJp = await Jackpot.findOne();
 
     res.json({
       tier,
       prize,
       sk_balance: user.sk_balance,
-      pools: { mini: jp.mini, major: jp.major, mega: jp.mega },
+      pools: { mini: updatedJp.mini, major: updatedJp.major, mega: updatedJp.mega },
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

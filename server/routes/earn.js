@@ -36,10 +36,9 @@ router.post('/daily', async (req, res) => {
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += DAILY_REWARD;
-    user.last_daily_claim = new Date();
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'earn',
       token: 'SK',
       amount: DAILY_REWARD,
@@ -48,7 +47,7 @@ router.post('/daily', async (req, res) => {
       reference: 'daily_checkin',
     });
 
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, last_daily_claim: new Date().toISOString() });
 
     res.json({
       sk_balance: user.sk_balance,
@@ -86,8 +85,7 @@ router.get('/referral', async (req, res) => {
     let referralCode = user.referral_code;
     if (!referralCode) {
       referralCode = 'SKJ' + user.telegram_id;
-      user.referral_code = referralCode;
-      await user.save();
+      await User.update(user.id, { referral_code: referralCode });
     }
 
     const verifiedCount = (user.referrals || []).filter(r => r.verified).length;
@@ -116,10 +114,9 @@ router.post('/tg-channel', async (req, res) => {
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += TG_CHANNEL_REWARD;
-    user.tg_channel_claimed = true;
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'earn',
       token: 'SK',
       amount: TG_CHANNEL_REWARD,
@@ -128,7 +125,7 @@ router.post('/tg-channel', async (req, res) => {
       reference: 'tg_channel',
     });
 
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, tg_channel_claimed: true });
 
     res.json({
       sk_balance: user.sk_balance,
@@ -165,10 +162,9 @@ router.post('/community', async (req, res) => {
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += TG_COMMUNITY_REWARD;
-    user.tg_community_claimed = true;
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'earn',
       token: 'SK',
       amount: TG_COMMUNITY_REWARD,
@@ -177,7 +173,7 @@ router.post('/community', async (req, res) => {
       reference: 'tg_community',
     });
 
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, tg_community_claimed: true });
 
     res.json({
       sk_balance: user.sk_balance,
@@ -215,10 +211,9 @@ router.post('/wallet-connect', async (req, res) => {
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += WALLET_CONNECT_REWARD;
-    user.wallet_connected_claimed = true;
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'earn',
       token: 'SK',
       amount: WALLET_CONNECT_REWARD,
@@ -227,7 +222,7 @@ router.post('/wallet-connect', async (req, res) => {
       reference: 'wallet_connect',
     });
 
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, wallet_connected_claimed: true });
 
     res.json({
       sk_balance: user.sk_balance,
@@ -267,10 +262,9 @@ router.post('/ad-reward', async (req, res) => {
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += AD_REWARD;
-    user.last_ad_watch = new Date();
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'earn',
       token: 'SK',
       amount: AD_REWARD,
@@ -279,7 +273,7 @@ router.post('/ad-reward', async (req, res) => {
       reference: 'ad_watch',
     });
 
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, last_ad_watch: new Date().toISOString() });
 
     res.json({
       sk_balance: user.sk_balance,
@@ -326,10 +320,9 @@ router.post('/richads-reward', async (req, res) => {
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += RICHADS_REWARD;
-    user.last_richads_watch = new Date();
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'earn',
       token: 'SK',
       amount: RICHADS_REWARD,
@@ -338,7 +331,7 @@ router.post('/richads-reward', async (req, res) => {
       reference: 'richads_watch',
     });
 
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, last_richads_watch: new Date().toISOString() });
 
     res.json({
       sk_balance: user.sk_balance,
@@ -385,10 +378,9 @@ router.post('/monetag-reward', async (req, res) => {
 
     const balanceBefore = user.sk_balance;
     user.sk_balance += MONETAG_REWARD;
-    user.last_monetag_watch = new Date();
 
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'earn',
       token: 'SK',
       amount: MONETAG_REWARD,
@@ -397,7 +389,7 @@ router.post('/monetag-reward', async (req, res) => {
       reference: 'monetag_watch',
     });
 
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance, last_monetag_watch: new Date().toISOString() });
 
     res.json({
       sk_balance: user.sk_balance,

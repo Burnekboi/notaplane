@@ -1,16 +1,21 @@
-const mongoose = require('mongoose');
+const { Pool } = require('pg');
 
-mongoose.connection.on('connected', () => console.log('MongoDB connected'));
-mongoose.connection.on('error', (err) => console.error('MongoDB error:', err.message));
+const pool = new Pool({
+  connectionString: process.env.SUPABASE_URI,
+});
+
+pool.on('connect', () => console.log('Database connected'));
+pool.on('error', (err) => console.error('Database error:', err.message));
 
 async function connectDb() {
-  const uri = process.env.MONGODB_URI || process.env.MONGO_URL;
-  if (!uri) throw new Error('MONGODB_URI not set in .env');
-
-  await mongoose.connect(uri, {
-    serverSelectionTimeoutMS: 5000, // fail fast if unreachable
-    connectTimeoutMS: 5000,
-  });
+  const uri = process.env.SUPABASE_URI;
+  if (!uri) throw new Error('SUPABASE_URI not set in .env');
+  const client = await pool.connect();
+  client.release();
 }
 
-module.exports = { connectDb };
+function query(text, params) {
+  return pool.query(text, params);
+}
+
+module.exports = { connectDb, query, pool };

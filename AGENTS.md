@@ -15,9 +15,10 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
   - `npm start`
   - Opens on `http://localhost:3000`
 - For Telegram bot to work, set `BOT_TOKEN` in `.env` (create from `.env.example`).
-- For the database, set `MONGODB_URI` in `.env` (MongoDB Atlas connection string).
+- For the database, set `SUPABASE_URI` in `.env` (Supabase PostgreSQL connection string).
+- To create the required tables, run `server/schema.sql` against your Supabase database.
 - Without a bot token, the Express server still serves the game and API.
-- Without a MongoDB URI, the server starts but API calls fail.
+- Without a SUPABASE_URI, the server starts but API calls fail.
 
 ## API Endpoints
 | Endpoint | Method | Auth | Description |

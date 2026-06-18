@@ -10,6 +10,7 @@ router.use(authMiddleware);
 router.get('/balance', async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ sk: user.sk_balance, skj: user.skj_balance });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -19,9 +20,10 @@ router.get('/balance', async (req, res) => {
 router.get('/transactions', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-    const txs = await Transaction.find({ user_id: req.user.userId })
-      .sort({ createdAt: -1 })
-      .limit(limit);
+    const txs = await Transaction.find(
+      { user_id: req.user.userId },
+      { sort: { created_at: -1 }, limit }
+    );
     res.json(txs);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -50,15 +52,15 @@ router.post('/buy-sk', async (req, res) => {
     }
     const before = user.sk_balance;
     user.sk_balance += Number(sk_amount);
-    await user.save();
+    await User.update(user.id, { sk_balance: user.sk_balance });
     await Transaction.create({
-      user_id: user._id,
+      user_id: user.id,
       type: 'buy',
       token: 'SK',
       amount: Number(sk_amount),
       balance_before: before,
       balance_after: user.sk_balance,
-      reference: `Buy ${Number(sk_amount).toLocaleString()} SK for ${tons_amount} TON`,
+      reference: `Buy ${Number(sk_amount).toLocaleString()} SK for ${tons_amount} GRAM`,
     });
     res.json({ sk_balance: user.sk_balance });
   } catch (err) {
@@ -82,10 +84,9 @@ router.post('/buy-auto-lightning', async (req, res) => {
       }
       const before = user.sk_balance;
       user.sk_balance -= AUTO_LIGHTNING_SK_PRICE;
-      user.has_auto_lightning = true;
-      await user.save();
+      await User.update(user.id, { sk_balance: user.sk_balance, has_auto_lightning: true });
       await Transaction.create({
-        user_id: user._id,
+        user_id: user.id,
         type: 'buy',
         token: 'SK',
         amount: -AUTO_LIGHTNING_SK_PRICE,
@@ -98,16 +99,15 @@ router.post('/buy-auto-lightning', async (req, res) => {
 
     if (payment_method === 'ton') {
       if (!tx_boc) return res.status(400).json({ error: 'Missing tx_boc' });
-      user.has_auto_lightning = true;
-      await user.save();
+      await User.update(user.id, { has_auto_lightning: true });
       await Transaction.create({
-        user_id: user._id,
+        user_id: user.id,
         type: 'buy',
         token: 'SK',
         amount: 0,
         balance_before: user.sk_balance,
         balance_after: user.sk_balance,
-        reference: `Auto Lightning Beam (${AUTO_LIGHTNING_TON_PRICE} TON)`,
+        reference: `Auto Lightning Beam (${AUTO_LIGHTNING_TON_PRICE} GRAM)`,
       });
       return res.json({ has_auto_lightning: true, sk_balance: user.sk_balance });
     }

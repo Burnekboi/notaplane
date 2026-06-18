@@ -13,7 +13,7 @@ console.log('Bot WEBAPP_URL:', WEBAPP_URL);
 
 function makeDashUrl(user) {
   const token = jwt.sign(
-    { userId: user._id, telegramId: user.telegram_id },
+    { userId: user.id, telegramId: user.telegram_id },
     process.env.JWT_SECRET,
     { expiresIn: '24h' },
   );
@@ -76,12 +76,11 @@ function initBot() {
       const payload = ctx.payload || '';
       let referrerCode = null;
 
-      // Check if this is a referral start (deep link with code)
       if (payload && payload.startsWith('SKJ')) {
         referrerCode = payload;
       }
 
-      let user = await User.findOne({ telegram_id: ctx.from.id });
+      let user = await User.findByTelegramId(ctx.from.id);
       const name = ctx.from.first_name || 'Player';
 
       if (!user) {
@@ -94,18 +93,17 @@ function initBot() {
           referral_code: makeReferralCode({ telegram_id: ctx.from.id }),
         });
 
-        // If referred, add to referrer's list
         if (referrerCode) {
           const referrer = await User.findOne({ referral_code: referrerCode });
           if (referrer) {
-            user.referred_by = referrer._id;
-            await user.save();
-            referrer.referrals.push({
-              user_id: user._id,
+            await User.update(user.id, { referred_by: referrer.id });
+            const referrals = referrer.referrals || [];
+            referrals.push({
+              user_id: user.id,
               verified: false,
               reward_claimed: false,
             });
-            await referrer.save();
+            await User.update(referrer.id, { referrals });
           }
         }
 
@@ -123,7 +121,6 @@ function initBot() {
           },
         );
       } else {
-        // Existing user
         await ctx.replyWithPhoto(
           { source: 'assets/intro title.png' },
           {
@@ -155,7 +152,7 @@ function initBot() {
 
   bot.command('balance', async (ctx) => {
     try {
-      const user = await User.findOne({ telegram_id: ctx.from.id });
+      const user = await User.findByTelegramId(ctx.from.id);
       if (user) {
         await ctx.replyWithHTML(
           `💰 <b>Your Balance</b>\n` +
@@ -173,14 +170,14 @@ function initBot() {
 
   bot.command('referral', async (ctx) => {
     try {
-      let user = await User.findOne({ telegram_id: ctx.from.id });
+      let user = await User.findByTelegramId(ctx.from.id);
       if (!user) {
         return ctx.reply('You haven\'t started yet! Use /start to register.');
       }
 
       if (!user.referral_code) {
         user.referral_code = makeReferralCode(user);
-        await user.save();
+        await User.update(user.id, { referral_code: user.referral_code });
       }
 
       const link = makeReferralLink(user.referral_code);

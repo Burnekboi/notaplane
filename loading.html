@@ -1,0 +1,270 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>Space King Jackpot</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #000;
+  overflow: hidden;
+  font-family: 'Impact', 'Arial Black', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+canvas#stars {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+}
+#content {
+  position: relative;
+  z-index: 1;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+#logo {
+  text-align: center;
+}
+#logo h1 {
+  font-size: clamp(28px, 7vw, 52px);
+  color: #ffd866;
+  letter-spacing: 4px;
+  text-shadow: 0 0 40px rgba(255,200,80,0.3), 0 0 80px rgba(255,200,80,0.1);
+  line-height: 1.2;
+}
+#logo span {
+  display: block;
+  font-size: clamp(12px, 2.5vw, 18px);
+  color: rgba(255,216,102,0.35);
+  letter-spacing: 8px;
+  margin-top: 4px;
+  font-family: Arial, sans-serif;
+  font-weight: normal;
+}
+#spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255,200,100,0.12);
+  border-top: 3px solid #ffd866;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 30px rgba(255,200,80,0.1);
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+#status {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: rgba(255,216,102,0.5);
+  letter-spacing: 2px;
+  text-align: center;
+  min-height: 20px;
+  transition: color 0.3s;
+}
+#status.error {
+  color: rgba(255,100,100,0.6);
+}
+#status.ready {
+  color: rgba(100,255,100,0.7);
+}
+.pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+#progress {
+  width: min(240px, 60vw);
+  height: 4px;
+  background: rgba(255,200,100,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#progressBar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffd866, #ffaa44);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div id="content">
+  <div id="logo">
+    <h1>SPACE KING<br>JACKPOT</h1>
+    <span>NIRKA GAMES</span>
+  </div>
+  <div id="spinner"></div>
+  <div id="status" class="pulse">Initializing...</div>
+  <div id="progress"><div id="progressBar"></div></div>
+</div>
+
+<script>
+(function() {
+  var targetUrl = null;
+  var baseOrigin = null;
+  var pollCount = 0;
+  var maxPolls = 120;
+  var pollInterval = 2500;
+  var statusEl = document.getElementById('status');
+  var progressBar = document.getElementById('progressBar');
+
+  function getParam(name) {
+    var p = new URLSearchParams(window.location.search);
+    return p.get(name);
+  }
+
+  function setStatus(text, className) {
+    statusEl.textContent = text;
+    statusEl.className = className || '';
+  }
+
+  function updateProgress() {
+    var pct = Math.min((pollCount / maxPolls) * 100, 95);
+    progressBar.style.width = pct + '%';
+  }
+
+  function redirectTo(url) {
+    if (!url) return;
+    if (window.Telegram && window.Telegram.WebApp) {
+      try { window.Telegram.WebApp.close(); } catch(e) {}
+    }
+    window.location.replace(url);
+  }
+
+  function start(nextUrl) {
+    targetUrl = nextUrl;
+    if (!targetUrl) {
+      setStatus('No destination configured', 'error');
+      return;
+    }
+
+    try {
+      var u = new URL(targetUrl);
+      baseOrigin = u.origin;
+    } catch(e) {
+      setStatus('Invalid destination', 'error');
+      return;
+    }
+
+    setStatus('Connecting to server...', 'pulse');
+    poll();
+  }
+
+  function poll() {
+    pollCount++;
+    updateProgress();
+
+    var healthUrl = baseOrigin + '/api/health';
+    var xhr = new XMLHttpRequest();
+    xhr.timeout = 10000;
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 400) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data && data.status === 'ok') {
+            setStatus('Server ready!', 'ready');
+            progressBar.style.width = '100%';
+            setTimeout(function() { redirectTo(targetUrl); }, 400);
+            return;
+          }
+        } catch(e) {}
+        retryOrTimeout();
+      } else {
+        retryOrTimeout();
+      }
+    };
+    xhr.onerror = function() { retryOrTimeout(); };
+    xhr.ontimeout = function() { retryOrTimeout(); };
+    xhr.open('GET', healthUrl, true);
+    xhr.send();
+  }
+
+  function retryOrTimeout() {
+    if (pollCount >= maxPolls) {
+      setStatus('Server is taking longer than expected. Reload to try again.', 'error');
+      progressBar.style.width = '100%';
+      return;
+    }
+    var dots = '.'.repeat((pollCount % 3) + 1);
+    setStatus('Server is waking up' + dots, 'pulse');
+    setTimeout(poll, pollInterval);
+  }
+
+  // Entry point
+  var next = getParam('next');
+  start(next || '');
+
+  // Starfield canvas
+  var canvas = document.getElementById('stars');
+  var ctx = canvas.getContext('2d');
+  var W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  var stars = [];
+  for (var i = 0; i < 200; i++) {
+    stars.push({
+      x: (Math.random() - 0.5) * 2,
+      y: (Math.random() - 0.5) * 2,
+      z: Math.random(),
+      speed: 0.003 + Math.random() * 0.007,
+      size: 0.5 + Math.random() * 1.5,
+    });
+  }
+
+  function drawStars() {
+    var cx = W / 2;
+    var cy = H / 2;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      s.z -= s.speed;
+      if (s.z <= 0) {
+        s.x = (Math.random() - 0.5) * 2;
+        s.y = (Math.random() - 0.5) * 2;
+        s.z = 1;
+        s.speed = 0.003 + Math.random() * 0.007;
+        s.size = 0.5 + Math.random() * 1.5;
+      }
+      var px = cx + (s.x * 300) / s.z;
+      var py = cy + (s.y * 300) / s.z;
+      var ds = s.size * (1 - s.z * 0.6);
+      if (px < 0 || px > W || py < 0 || py > H) continue;
+      var br = 0.3 + (1 - s.z) * 0.7;
+      ctx.save();
+      ctx.globalAlpha = br;
+      ctx.fillStyle = '#c8d8ff';
+      ctx.beginPath();
+      ctx.arc(px, py, ds, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    requestAnimationFrame(drawStars);
+  }
+  drawStars();
+})();
+</script>
+</body>
+</html>

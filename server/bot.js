@@ -4,6 +4,7 @@ const User = require('./models/User');
 
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL || null;
 const WEBAPP_URL = (process.env.WEBAPP_URL || RENDER_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const LOADING_PAGE_URL = (process.env.LOADING_PAGE_URL || '').replace(/\/+$/, '');
 
 const CHANNEL_USERNAME = '@nirkagames';
 
@@ -15,7 +16,11 @@ function makeDashUrl(user) {
     process.env.JWT_SECRET,
     { expiresIn: '24h' },
   );
-  return `${WEBAPP_URL}/dashboard?token=${token}`;
+  const dashUrl = `${WEBAPP_URL}/dashboard?token=${token}`;
+  if (LOADING_PAGE_URL) {
+    return `${LOADING_PAGE_URL}/?next=${encodeURIComponent(dashUrl)}`;
+  }
+  return dashUrl;
 }
 
 let _dailyNotified = false;

@@ -76,6 +76,29 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 - **State machine**: `jackpotState` = `{ phase: 'glow'|'roulette', phaseStartTime, selectedId, prize, ... }`. `updateJackpotState()` called every frame from `update()`.
 - **Draw**: `drawJackpotBox()` renders glow/roulette effects on `uiCanvas`. `jackpottitle.png` drawn above player base like other ability titles.
 
+## Custom Loading Page (Render cold-start fix)
+
+When Render's free tier spins down, it shows a generic "Loading..." page while waking up. To replace it with a game-themed loading screen:
+
+1. **Create a Render Static Site** (free, always-on) for `loading.html`
+   - In Render Dashboard → New + → Static Site
+   - Connect your repo or upload `loading.html` directly
+   - Set the **Publish directory** to the repo root (or wherever `loading.html` is)
+   - After deploy, you get a URL like `https://loading-xxxx.onrender.com`
+
+2. **Set the env var** on your main Web Service:
+   ```
+   LOADING_PAGE_URL=https://loading-xxxx.onrender.com
+   ```
+
+3. **How it works:**
+   - The bot's WebApp button now points to the loading page with `?next=<encoded-dashboard-url>`
+   - The loading page shows the space-themed animation instantly (no cold start)
+   - It polls the main server's `/api/health` endpoint every 2.5s
+   - Once the server responds, it redirects to the dashboard
+
+4. **Without LOADING_PAGE_URL set**, everything works as before (direct to dashboard).
+
 ## Git workflow
 - **Commit and push after every code change.** Every time I finish writing code (bug fix, feature, refactor, etc.), I must immediately:
   1. `git add -A`
